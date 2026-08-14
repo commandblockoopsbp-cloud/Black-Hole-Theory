@@ -14,9 +14,10 @@ var version = 1;
 
 var currency;
 var E1, dt, mi, gamma;
+var E1nowLevel = 0;
 //constant
 var G = BigNumber.from(6.674) * BigNumber.TEN.pow(-11), c = BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), planck = BigNumber.from(1.055) * BigNumber.TEN.pow(-34), K = BigNumber.from(3.9628) * BigNumber.TEN.pow(15);
-var EVal = BigNumber.ZERO, t = BigNumber.ZERO, M = BigNumber.TEN.pow(12);
+var EVal = BigNumber.ZERO, t = BigNumber.ZERO, M = BigNumber.TEN.pow(12), Cn = BigNumber.ZERO;
 
 var numberFormat = (value, decimals, negExpFlag=false) => {
     if (value >= BigNumber.ZERO)
@@ -67,13 +68,13 @@ var init = () => {
     // E1
     {
         E1 = theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
-        E1.getDescription = (_) => Utils.getMath("E \\uparrow 1e28");
-        E1.getInfo = (amount) => "E increase by 1e28";
+        E1.getDescription = (_) => Utils.getMath("E \\uparrow " + getE(1));
+        E1.getInfo = (amount) => "E increase by " + getE(1);
     }
 
     // dt
     {
-        let getDesc = (level) => "dt=" + getDT(level).toString(1);
+        let getDesc = (level) => "dt=" + getDT(level).toString();
         dt = theory.createUpgrade(0, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE)));
         dt.maxLevel = 1;
         dt.getDescription = (_) => Utils.getMath(getDesc(dt.level));
@@ -82,7 +83,7 @@ var init = () => {
 
     // mi
     {
-        let getDesc = (level) => `\\mu = ${getMI(level).toString(2)}`;
+        let getDesc = (level) => `\\mu = ${getMI(level).toString()}`;
         mi = theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2()));
         mi.getDescription = (_) => Utils.getMath(getDesc(mi.level));
         mi.getInfo = (amount) => Utils.getMathTo(getDesc(mi.level), getDesc(mi.level + amount));
@@ -90,9 +91,9 @@ var init = () => {
 
     // gamma
     {
-        let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString(2)}`;
-        gamma = theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.log2()));
-        gamma.maxLevel = 80;
+        let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString(1)}`;
+        gamma = theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(2).log2()));
+        gamma.maxLevel = 8;
         gamma.getDescription = (_) => Utils.getMath(getDesc(gamma.level));
         gamma.getInfo = (amount) => Utils.getMathTo(getDesc(gamma.level), getDesc(gamma.level + amount));
     }
@@ -141,9 +142,9 @@ var tick = (elapsedTime, multiplier) => {
 
         currency.value += realTime * M / BigNumber.TEN.pow(11);
 
-        if (E1.level > 0) {
-            EVal += E1.level * BigNumber.TEN.pow(28);
-            E1.level = 0;
+        if (E1.level > E1nowLevel) {
+            EVal += (E1.level - E1nowLevel) * BigNumber.TEN.pow(28);
+            E1nowLevel = E1.level;
         }
     }
 
@@ -152,13 +153,14 @@ var tick = (elapsedTime, multiplier) => {
 }
 
 //Equation
-var getInternalState = () => `${EVal} ${t} ${M}`
+var getInternalState = () => `${EVal} ${t} ${M} ${Cn}`
 
 var setInternalState = (state) => {
     let values = state.split(" ");
     if (values.length > 0) EVal = parseBigNumber(values[0]);
     if (values.length > 1) t = parseBigNumber(values[1]);
     if (values.length > 2) M = parseBigNumber(values[2]);
+    if (values.length > 3) Cn = parseBigNumber(values[3]);
 }
 
 var getPrimaryEquation = () => {
@@ -201,7 +203,7 @@ var getTertiaryEquation = () => {
 var getSecondaryEquation = () => theory.latexSymbol + "=\\max\\rho";
 
 var getEquationOverlay = () => {
-    let button = ui.createButton({
+    let button1 = ui.createButton({
         text: "?",
         fontSize: 40,
         textColor: Color.TEXT,
@@ -209,9 +211,13 @@ var getEquationOverlay = () => {
         borderColor: Color.TRANSPARENT,
         widthRequest: 50,
         heightRequest: 50,
-        horizontalOptions: LayoutOptions.START,
-        verticalOptions: LayoutOptions.END,
-        onClicked: () => {
+        horizontalOptions: LayoutOptions.START_AND_EXPAND,
+        verticalOptions: LayoutOptions.END_AND_EXPAND,
+        onPressed: () => {
+            button1.textColor = Color.TEXT_DARK
+        },
+        onReleased: () => {
+            button1.textColor = Color.TEXT
             let popup = ui.createPopup({
                         title: "Constant & Info",
                         content: ui.createStackLayout({
@@ -257,11 +263,57 @@ var getEquationOverlay = () => {
                             ]
                         })
                     });
-                    popup.show();
+            popup.show();
         },
     });
 
-    return button;
+    let button2 = ui.createButton({
+        text: "꥟",
+        fontSize: 40,
+        textColor: Color.TEXT,
+        backgroundColor: Color.TRANSPARENT,
+        borderColor: Color.TRANSPARENT,
+        widthRequest: 50,
+        heightRequest: 50,
+        horizontalOptions: LayoutOptions.START_AND_EXPAND,
+        verticalOptions: LayoutOptions.START_AND_EXPAND,
+        onPressed: () => {
+            button2.textColor = Color.TEXT_DARK
+        },
+        onReleased: () => {
+            button2.textColor = Color.TEXT
+            let popup = ui.createPopup({
+                        title: "Collapse Info",
+                        content: ui.createStackLayout({
+                            children: [
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("\\text{Collapses: } " + numberFormat(Cn, 0)),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+
+                                // Dòng kẻ phân cách nhỏ cho đẹp mắt
+                                ui.createBox({
+                                    heightRequest: 1,
+                                    backgroundColor: Color.TEXT,
+                                    margin: new Thickness(0, 10)
+                                }),
+
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("\\text{Dark Matter Formula: } " + numberFormat(Cn, 0)),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                            ]
+                        })
+                    });
+            popup.show();
+        }
+    });
+
+    return ui.createStackLayout({
+        children: [
+            button2, button1
+        ]
+    });
 };
 
 var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
@@ -270,6 +322,10 @@ var getTau = () => currency.value;
 var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.value.abs()).log10().toNumber();
 
 //getValue
+var getE = (level) => {
+    return level * BigNumber.TEN.pow(28);
+}
+
 var getDT = (level) => {
     switch (level) {
         case 1:
@@ -284,7 +340,7 @@ var getMI = (level) => {
 }
 
 var getGAMMA = (level) => {
-    return (BigNumber.from(0.9) - level / BigNumber.TEN.pow(2)).max(BigNumber.from(0.1));
+    return (BigNumber.from(0.9) - level / BigNumber.TEN.pow(1)).max(BigNumber.from(0.1));
 }
 
 init();
