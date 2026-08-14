@@ -16,7 +16,7 @@ var currency;
 var E1, dt, mi, gamma;
 //constant
 var G = BigNumber.from(6.674) * BigNumber.TEN.pow(-11), c = BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), planck = BigNumber.from(1.055) * BigNumber.TEN.pow(-34), K = BigNumber.from(3.9628) * BigNumber.TEN.pow(15);
-var EVal = BigNumber.ONE, t = BigNumber.ZERO, M = BigNumber.TEN.pow(6);
+var EVal = BigNumber.ZERO, t = BigNumber.ZERO, M = BigNumber.TEN.pow(12);
 
 var numberFormat = (value, decimals, negExpFlag=false) => {
     if (value >= BigNumber.ZERO)
@@ -67,8 +67,8 @@ var init = () => {
     // E1
     {
         E1 = theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
-        E1.getDescription = (_) => Utils.getMath("E \\uparrow 1");
-        E1.getInfo = (amount) => "E increase by 1";
+        E1.getDescription = (_) => Utils.getMath("E \\uparrow 1e28");
+        E1.getInfo = (amount) => "E increase by 1e28";
     }
 
     // dt
@@ -116,20 +116,37 @@ var updateAvailability = () => {
 }
 
 var tick = (elapsedTime, multiplier) => {
-    let time = BigNumber.from(elapsedTime * multiplier) * getDT(dt.level);
-    let bonus = theory.publicationMultiplier;
-    if (E1.level > 0) {
-        EVal += E1.level;
-        E1.level = 0;
+    let realTime = BigNumber.from(elapsedTime * multiplier);
+    if (M == 0) {
+        realTime = 0;
     }
-    let same = EVal * M.pow(0.5);
-    let dE = -time * getGAMMA(gamma.level) * same.min(BigNumber.ONE);
-    let dM = time * (getMI(mi.level) * same * BigNumber.TEN.pow(16) / c.pow(2) - K / (BigNumber.ONE + M.pow(2)));
-    M += BigNumber.from(dM);
-    M = M.max(BigNumber.ZERO);
-    EVal += BigNumber.from(dE);
-    t += time;
-    currency.value += time * M / BigNumber.TEN.pow(5);
+    let time = realTime * getDT(dt.level);
+    let bonus = theory.publicationMultiplier;
+
+    let P1 = (BigNumber.from(81) * c.pow(3) / (BigNumber.from(32) * G)) * (EVal / (M + BigNumber.ONE));
+    let P2 = BigNumber.from(6.321) * M;
+    let P_abs = P1.min(P2);
+    let E_drained = EVal.min(P_abs * time);
+    let dE = - E_drained;
+
+    let dM = getMI(mi.level) * (BigNumber.ONE - getGAMMA(gamma.level)) * -dE / c.pow(2) - time * K / (BigNumber.ONE + M.pow(2));
+
+    if (dt.level > 0) {
+        M += dM;
+        M = M.max(BigNumber.ZERO);
+
+        EVal += dE;
+
+        t += realTime;
+
+        currency.value += realTime * M / BigNumber.TEN.pow(11);
+
+        if (E1.level > 0) {
+            EVal += E1.level * BigNumber.TEN.pow(28);
+            E1.level = 0;
+        }
+    }
+
     theory.invalidateQuaternaryValues();
     theory.invalidateTertiaryEquation();
 }
@@ -146,12 +163,15 @@ var setInternalState = (state) => {
 
 var getPrimaryEquation = () => {
     let result = "";
-    let scale = 1;
-    result += "\\dot{\\rho} = dt \\cdot \\frac{M}{1e5} ";
-    result += "\\\\\\\\\\frac{dE}{dt} = -\\gamma \\cdot E \\cdot \\min\\left(M^{0.5},1\\right)";
-    result += "\\\\\\\\\\frac{dM}{dt} = \\mu \\cdot \\frac{E \\cdot M^{0.5} \\cdot 1e16}{c^2} -\\frac{K}{M^2 + 1}";
+    let scale = 1.1;
+    result += "\\dot{\\rho} = \\frac{M}{10^{11}} \\\\";
+    result += "P_1 = \\frac{81 \\cdot c^3 \\cdot E}{32 G \\cdot (M + 1)} \\\\";
+    result += "P_2 = 6.321 M \\\\";
+    result += "P_{\\text{abs}} = \\min(P_1, P_2) \\\\";
+    result += "\\frac{dE}{dt} = -\\min(E, P_{\\text{abs}}) \\\\";
+    result += "\\frac{dM}{dt} = -\\frac{dE}{dt} \\cdot \\frac{\\mu (1 - \\gamma)}{c^2} - \\frac{K}{M^2 + 1}";
     theory.primaryEquationScale = scale;
-    theory.primaryEquationHeight = 100 * scale;
+    theory.primaryEquationHeight = 150 * scale;
     return "\\begin{matrix}" + result + "\\end{matrix}";
 }
 
@@ -161,21 +181,23 @@ var getQuaternaryEntries = () => {
     if (flagAll) {
         quaternaryEntries.push(new QuaternaryEntry("E", null));
         quaternaryEntries.push(new QuaternaryEntry("M", null));
-        quaternaryEntries.push(new QuaternaryEntry("t", null));
         quaternaryEntries.push(new QuaternaryEntry("r_s", null));
+        quaternaryEntries.push(new QuaternaryEntry("t", null));
+        quaternaryEntries.push(new QuaternaryEntry("t_r", null));
     }
     quaternaryEntries[0].value = EVal.toString();
     quaternaryEntries[1].value = M.toString();
-    quaternaryEntries[2].value = t.toString();
     let rs = BigNumber.TWO * G * M / c.pow(2);
-    quaternaryEntries[3].value = numberFormat(rs, 2);
+    quaternaryEntries[2].value = numberFormat(rs, 2);
+    quaternaryEntries[3].value = (t * getDT(dt.level)).toString();
+    quaternaryEntries[4].value = t.toString();
     return quaternaryEntries;
 }
 
 var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.pow(BigNumber.THREE) / (BigNumber.THREE * K);
-    result += "T_{evap} = " + numberFormat(tEvap, 2);
+    result += "T_{evap} = " + numberFormat(tEvap / getDT(dt.level), 2);
     return result;
 }
 
@@ -233,7 +255,7 @@ var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.valu
 var getDT = (level) => {
     switch (level) {
         case 1:
-            return BigNumber.from(1);
+            return BigNumber.TEN.pow(18);
         default:
             return BigNumber.ZERO;
     }
