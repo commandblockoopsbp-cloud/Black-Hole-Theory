@@ -91,9 +91,9 @@ var init = () => {
 
     // gamma
     {
-        let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString(1)}`;
+        let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString()}`;
         gamma = theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(2).log2()));
-        gamma.maxLevel = 8;
+        gamma.maxLevel = 16;
         gamma.getDescription = (_) => Utils.getMath(getDesc(gamma.level));
         gamma.getInfo = (amount) => Utils.getMathTo(getDesc(gamma.level), getDesc(gamma.level + amount));
     }
@@ -340,7 +340,7 @@ var getMI = (level) => {
 }
 
 var getGAMMA = (level) => {
-    return (BigNumber.from(0.9) - level / BigNumber.TEN.pow(1)).max(BigNumber.from(0.1));
+    return (BigNumber.from(0.9) - level / BigNumber.from(20)).max(BigNumber.from(0.1));
 }
 
 init();
