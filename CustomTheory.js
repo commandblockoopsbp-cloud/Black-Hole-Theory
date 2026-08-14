@@ -1,4 +1,4 @@
-﻿import { ConstantCost, ExponentialCost, FirstFreeCost, FreeCost, LinearCost } from "./api/Costs";
+import { ConstantCost, ExponentialCost, FirstFreeCost, FreeCost, LinearCost } from "./api/Costs";
 import { Localization } from "./api/Localization";
 import { BigNumber } from "./api/BigNumber";
 import { theory } from "./api/Theory";
@@ -67,7 +67,7 @@ var init = () => {
 
     // E1
     {
-        E1 = theory.createUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
+        E1 = theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
         E1.getDescription = (_) => Utils.getMath("E \\uparrow 1");
         E1.getInfo = (amount) => "E increase by 1";
     }
@@ -132,6 +132,7 @@ var tick = (elapsedTime, multiplier) => {
     t += time;
     currency.value += time * M / BigNumber.TEN.pow(5);
     theory.invalidateQuaternaryValues();
+    theory.invalidateTertiaryEquation();
 }
 
 //Equation
@@ -147,7 +148,8 @@ var setInternalState = (state) => {
 var getPrimaryEquation = () => {
     let result = "";
     let scale = 1;
-    result+="\\frac{dE}{dt} = -\\gamma \\cdot E \\cdot \\min\\left(M^{0.5},1\\right)";
+    result += "\\dot{\\rho} = dt \\cdot \\frac{M}{1e5} ";
+    result += "\\\\\\\\\\frac{dE}{dt} = -\\gamma \\cdot E \\cdot \\min\\left(M^{0.5},1\\right)";
     result += "\\\\\\\\\\frac{dM}{dt} = \\mu \\cdot \\frac{E \\cdot M^{0.5} \\cdot 1e16}{c^2} -\\frac{K}{M^2 + 1}";
     theory.primaryEquationScale = scale;
     theory.primaryEquationHeight = 100 * scale;
@@ -161,11 +163,21 @@ var getQuaternaryEntries = () => {
         quaternaryEntries.push(new QuaternaryEntry("E", null));
         quaternaryEntries.push(new QuaternaryEntry("M", null));
         quaternaryEntries.push(new QuaternaryEntry("t", null));
+        quaternaryEntries.push(new QuaternaryEntry("r_s", null));
     }
     quaternaryEntries[0].value = EVal.toString();
     quaternaryEntries[1].value = M.toString();
     quaternaryEntries[2].value = t.toString();
+    let rs = BigNumber.TWO * G * M / c.pow(2);
+    quaternaryEntries[3].value = numberFormat(rs, 2);
     return quaternaryEntries;
+}
+
+var getTertiaryEquation = () => {
+    let result = "";
+    let tEvap = M.pow(BigNumber.THREE) / (BigNumber.THREE * K);
+    result += "T_{evap} = " + numberFormat(tEvap, 2);
+    return result;
 }
 
 var getSecondaryEquation = () => theory.latexSymbol + "=\\max\\rho";
@@ -174,6 +186,7 @@ var getEquationOverlay = () => {
     let button = ui.createButton({
         text: "?",
         fontSize: 40,
+        textColor: Color.TEXT,
         backgroundColor: Color.TRANSPARENT,
         borderColor: Color.TRANSPARENT,
         widthRequest: 50,
