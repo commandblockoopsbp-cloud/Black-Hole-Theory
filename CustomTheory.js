@@ -61,7 +61,6 @@ var numberFormat = (value, decimals, negExpFlag=false) => {
 
 var init = () => {
     currency = theory.createCurrency();
-
     ///////////////////
     // Regular Upgrades
 
@@ -75,7 +74,7 @@ var init = () => {
     // dt
     {
         let getDesc = (level) => "dt=" + getDT(level).toString(1);
-        dt = theory.createUpgrade(1, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE)));
+        dt = theory.createUpgrade(0, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE)));
         dt.maxLevel = 1;
         dt.getDescription = (_) => Utils.getMath(getDesc(dt.level));
         dt.getInfo = (amount) => Utils.getMathTo(getDesc(dt.level), getDesc(dt.level + amount));
@@ -83,8 +82,8 @@ var init = () => {
 
     // mi
     {
-        let getDesc = (level) => `\\mu = ${getMI(level).toString(1)}`;
-        mi = theory.createUpgrade(2, currency, new ConstantCost(BigNumber.ONE));
+        let getDesc = (level) => `\\mu = ${getMI(level).toString(2)}`;
+        mi = theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2()));
         mi.getDescription = (_) => Utils.getMath(getDesc(mi.level));
         mi.getInfo = (amount) => Utils.getMathTo(getDesc(mi.level), getDesc(mi.level + amount));
     }
@@ -92,7 +91,7 @@ var init = () => {
     // gamma
     {
         let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString(2)}`;
-        gamma = theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.log2()));
+        gamma = theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.log2()));
         gamma.maxLevel = 80;
         gamma.getDescription = (_) => Utils.getMath(getDesc(gamma.level));
         gamma.getInfo = (amount) => Utils.getMathTo(getDesc(gamma.level), getDesc(gamma.level + amount));
@@ -241,7 +240,7 @@ var getDT = (level) => {
 }
 
 var getMI = (level) => {
-    return level * BigNumber.TEN.pow(-1);
+    return BigNumber.TEN.pow(-1) + level * BigNumber.TEN.pow(-2);
 }
 
 var getGAMMA = (level) => {
