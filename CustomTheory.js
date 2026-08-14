@@ -164,11 +164,8 @@ var setInternalState = (state) => {
 var getPrimaryEquation = () => {
     let result = "";
     let scale = 1.1;
-    result += "\\dot{\\rho} = \\frac{M}{10^{11}} \\\\";
-    result += "P_1 = \\frac{81 \\cdot c^3 \\cdot E}{32 G \\cdot (M + 1)} \\\\";
-    result += "P_2 = 6.321 M \\\\";
-    result += "P_{\\text{abs}} = \\min(P_1, P_2) \\\\";
-    result += "\\frac{dE}{dt} = -\\min(E, P_{\\text{abs}}) \\\\";
+    result += "\\dot{\\rho} = \\frac{M}{10^{11}} \\\\\\\\";
+    result += "\\frac{dE}{dt} = -\\min\\left(E,P_{abs}\\right) \\\\\\\\";
     result += "\\frac{dM}{dt} = -\\frac{dE}{dt} \\cdot \\frac{\\mu (1 - \\gamma)}{c^2} - \\frac{K}{M^2 + 1}";
     theory.primaryEquationScale = scale;
     theory.primaryEquationHeight = 150 * scale;
@@ -216,10 +213,31 @@ var getEquationOverlay = () => {
         verticalOptions: LayoutOptions.END,
         onClicked: () => {
             let popup = ui.createPopup({
-                        title: "Constant",
+                        title: "Constant & Info",
                         content: ui.createStackLayout({
                             children: [
-                                // Sử dụng Utils.getMath để render chuẩn LaTeX
+                                // --- 1. CÁC CÔNG THỨC P1, P2, P_abs ---
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("P_1 = \\frac{81 c^3 E}{32 G (M + 1)}"),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("P_2 = 6.321 M"),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("P_{\\text{abs}} = \\min(P_1, P_2)"),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+
+                                // Dòng kẻ phân cách nhỏ cho đẹp mắt
+                                ui.createBox({
+                                    heightRequest: 1,
+                                    backgroundColor: Color.TEXT,
+                                    margin: new Thickness(0, 10)
+                                }),
+
+                                // --- 2. CÁC HẰNG SỐ VẬT LÝ ---
                                 ui.createLatexLabel({
                                     text: Utils.getMath("G = " + numberFormat(G, 3)),
                                     horizontalTextAlignment: TextAlignment.CENTER
