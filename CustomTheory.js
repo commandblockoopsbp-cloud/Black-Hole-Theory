@@ -12,12 +12,17 @@ var description = "A basic theory.";
 var authors = "Tomster - Coder\nfien012 - Idea && Tester";
 var version = 1;
 
+//upgrade
 var currency;
 var E1, dt, mi, gamma;
 var E1nowLevel = 0;
+
 //constant
 var G = BigNumber.from(6.674) * BigNumber.TEN.pow(-11), c = BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), planck = BigNumber.from(1.055) * BigNumber.TEN.pow(-34), K = BigNumber.from(3.9628) * BigNumber.TEN.pow(15);
 var EVal = BigNumber.ZERO, t = BigNumber.ZERO, M = BigNumber.TEN.pow(12), Cn = BigNumber.ZERO;
+
+//dynamicLabel
+var dynamicLabel1;
 
 var numberFormat = (value, decimals, negExpFlag=false) => {
     if (value >= BigNumber.ZERO)
@@ -117,6 +122,7 @@ var updateAvailability = () => {
 }
 
 var tick = (elapsedTime, multiplier) => {
+    //calculate
     let realTime = BigNumber.from(elapsedTime * multiplier);
     if (M == 0) {
         realTime = 0;
@@ -146,6 +152,11 @@ var tick = (elapsedTime, multiplier) => {
             EVal += (E1.level - E1nowLevel) * BigNumber.TEN.pow(28);
             E1nowLevel = E1.level;
         }
+    }
+
+    //dynamicLabel
+    if (dynamicLabel1) {
+        dynamicLabel1.text = Utils.getMath("\\text{Dark Matter Gain: } " + numberFormat(t / 90, 3))
     }
 
     theory.invalidateQuaternaryValues();
@@ -214,10 +225,10 @@ var getEquationOverlay = () => {
         horizontalOptions: LayoutOptions.START_AND_EXPAND,
         verticalOptions: LayoutOptions.END_AND_EXPAND,
         onPressed: () => {
-            button1.textColor = Color.TEXT_DARK
+            button1.textColor = Color.TEXT_DARK;
         },
         onReleased: () => {
-            button1.textColor = Color.TEXT
+            button1.textColor = Color.TEXT;
             let popup = ui.createPopup({
                         title: "Constant & Info",
                         content: ui.createStackLayout({
@@ -278,10 +289,13 @@ var getEquationOverlay = () => {
         horizontalOptions: LayoutOptions.START_AND_EXPAND,
         verticalOptions: LayoutOptions.START_AND_EXPAND,
         onPressed: () => {
-            button2.textColor = Color.TEXT_DARK
+            button2.textColor = Color.TEXT_DARK;
         },
         onReleased: () => {
-            button2.textColor = Color.TEXT
+            button2.textColor = Color.TEXT;
+            dynamicLabel1 = ui.createLatexLabel({
+                horizontalTextAlignment: TextAlignment.CENTER
+            });
             let popup = ui.createPopup({
                         title: "Collapse Info",
                         content: ui.createStackLayout({
@@ -290,18 +304,7 @@ var getEquationOverlay = () => {
                                     text: Utils.getMath("\\text{Collapses: } " + numberFormat(Cn, 0)),
                                     horizontalTextAlignment: TextAlignment.CENTER
                                 }),
-
-                                // Dòng kẻ phân cách nhỏ cho đẹp mắt
-                                ui.createBox({
-                                    heightRequest: 1,
-                                    backgroundColor: Color.TEXT,
-                                    margin: new Thickness(0, 10)
-                                }),
-
-                                ui.createLatexLabel({
-                                    text: Utils.getMath("\\text{Dark Matter Formula: } " + numberFormat(Cn, 0)),
-                                    horizontalTextAlignment: TextAlignment.CENTER
-                                }),
+                                dynamicLabel1
                             ]
                         })
                     });
