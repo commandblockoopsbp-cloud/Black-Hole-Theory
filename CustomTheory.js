@@ -1,0 +1,238 @@
+﻿import { ConstantCost, ExponentialCost, FirstFreeCost, FreeCost, LinearCost } from "./api/Costs";
+import { Localization } from "./api/Localization";
+import { BigNumber } from "./api/BigNumber";
+import { theory } from "./api/Theory";
+import { Utils } from "./api/Utils";
+import { Thickness } from "./api/ui/properties/Thickness";
+import { Color } from "./api/ui/properties/Color";
+
+var id = "revitalize_of_black_hole";
+var name = "Revitalize of Black Hole";
+var description = "A basic theory.";
+var authors = "Tomster - Coder\nfien012 - Idea && Tester";
+var version = 1;
+
+var currency;
+var E1, dt, mi, gamma;
+//constant
+var G = BigNumber.from(6.674) * BigNumber.TEN.pow(-11), c = BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), planck = BigNumber.from(1.055) * BigNumber.TEN.pow(-34), K = BigNumber.from(3.9628) * BigNumber.TEN.pow(15);
+var EVal = BigNumber.ONE, t = BigNumber.ZERO, M = BigNumber.TEN.pow(6);
+
+var numberFormat = (value, decimals, negExpFlag=false) => {
+    if (value >= BigNumber.ZERO)
+    {
+        if (value >= BigNumber.from(0.1) || value == BigNumber.ZERO) 
+        {
+            if (value > BigNumber.ZERO && value < BigNumber.ONE && decimals < 3)
+            {
+                return value.toString(3);
+            }
+            return value.toString(decimals);
+        }
+        else
+        {
+            let exp = Math.floor((value*BigNumber.from(1+1e-5)).log10().toNumber());
+            let mts = (value * BigNumber.TEN.pow(-exp)).toString(decimals);
+            if (exp > 0 || !negExpFlag)
+            {
+                return `${mts}e${exp}`;
+            }
+            else
+            {
+                return `${mts}e$\\,-$${-exp}`;
+            }
+        }
+    }
+    else
+    {
+        value = -value;
+        if (value >= BigNumber.from(0.1) || value == BigNumber.ZERO) 
+        {
+            return (-value).toString(decimals);
+        }
+        else
+        {
+            let exp = Math.floor((value*BigNumber.from(1+1e-5)).log10().toNumber());
+            let mts = (value * BigNumber.TEN.pow(-exp)).toString(decimals);
+            return `-${mts}e${exp}`;
+        }
+    }
+}
+
+var init = () => {
+    currency = theory.createCurrency();
+
+    ///////////////////
+    // Regular Upgrades
+
+    // E1
+    {
+        E1 = theory.createUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
+        E1.getDescription = (_) => Utils.getMath("E \\uparrow 1");
+        E1.getInfo = (amount) => "E increase by 1";
+    }
+
+    // dt
+    {
+        let getDesc = (level) => "dt=" + getDT(level).toString(1);
+        dt = theory.createUpgrade(1, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE)));
+        dt.maxLevel = 1;
+        dt.getDescription = (_) => Utils.getMath(getDesc(dt.level));
+        dt.getInfo = (amount) => Utils.getMathTo(getDesc(dt.level), getDesc(dt.level + amount));
+    }
+
+    // mi
+    {
+        let getDesc = (level) => `\\mu = ${getMI(level).toString(1)}`;
+        mi = theory.createUpgrade(2, currency, new ConstantCost(BigNumber.ONE));
+        mi.getDescription = (_) => Utils.getMath(getDesc(mi.level));
+        mi.getInfo = (amount) => Utils.getMathTo(getDesc(mi.level), getDesc(mi.level + amount));
+    }
+
+    // gamma
+    {
+        let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString(2)}`;
+        gamma = theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.log2()));
+        gamma.maxLevel = 80;
+        gamma.getDescription = (_) => Utils.getMath(getDesc(gamma.level));
+        gamma.getInfo = (amount) => Utils.getMathTo(getDesc(gamma.level), getDesc(gamma.level + amount));
+    }
+
+    /////////////////////
+    // Permanent Upgrades
+    theory.createPublicationUpgrade(0, currency, 1e10);
+    theory.createBuyAllUpgrade(1, currency, 1e13);
+    theory.createAutoBuyerUpgrade(2, currency, 1e30);
+
+    ///////////////////////
+    //// Milestone Upgrades
+    theory.setMilestoneCost(new LinearCost(25, 25));
+
+
+    updateAvailability();
+}
+
+var updateAvailability = () => {
+    
+}
+
+var tick = (elapsedTime, multiplier) => {
+    let time = BigNumber.from(elapsedTime * multiplier) * getDT(dt.level);
+    let bonus = theory.publicationMultiplier;
+    if (E1.level > 0) {
+        EVal += E1.level;
+        E1.level = 0;
+    }
+    let same = EVal * M.pow(0.5);
+    let dE = -time * getGAMMA(gamma.level) * same.min(BigNumber.ONE);
+    let dM = time * (getMI(mi.level) * same * BigNumber.TEN.pow(16) / c.pow(2) - K / (BigNumber.ONE + M.pow(2)));
+    M += BigNumber.from(dM);
+    M = M.max(BigNumber.ZERO);
+    EVal += BigNumber.from(dE);
+    t += time;
+    currency.value += time * M / BigNumber.TEN.pow(5);
+    theory.invalidateQuaternaryValues();
+}
+
+//Equation
+var getInternalState = () => `${EVal} ${t} ${M}`
+
+var setInternalState = (state) => {
+    let values = state.split(" ");
+    if (values.length > 0) EVal = parseBigNumber(values[0]);
+    if (values.length > 1) t = parseBigNumber(values[1]);
+    if (values.length > 2) M = parseBigNumber(values[2]);
+}
+
+var getPrimaryEquation = () => {
+    let result = "";
+    let scale = 1;
+    result+="\\frac{dE}{dt} = -\\gamma \\cdot E \\cdot \\min\\left(M^{0.5},1\\right)";
+    result += "\\\\\\\\\\frac{dM}{dt} = \\mu \\cdot \\frac{E \\cdot M^{0.5} \\cdot 1e16}{c^2} -\\frac{K}{M^2 + 1}";
+    theory.primaryEquationScale = scale;
+    theory.primaryEquationHeight = 100 * scale;
+    return "\\begin{matrix}" + result + "\\end{matrix}";
+}
+
+var getQuaternaryEntries = () => {
+    let quaternaryEntries = [];
+    let flagAll = quaternaryEntries.length == 0;
+    if (flagAll) {
+        quaternaryEntries.push(new QuaternaryEntry("E", null));
+        quaternaryEntries.push(new QuaternaryEntry("M", null));
+        quaternaryEntries.push(new QuaternaryEntry("t", null));
+    }
+    quaternaryEntries[0].value = EVal.toString();
+    quaternaryEntries[1].value = M.toString();
+    quaternaryEntries[2].value = t.toString();
+    return quaternaryEntries;
+}
+
+var getSecondaryEquation = () => theory.latexSymbol + "=\\max\\rho";
+
+var getEquationOverlay = () => {
+    let button = ui.createButton({
+        text: "?",
+        fontSize: 40,
+        backgroundColor: Color.TRANSPARENT,
+        borderColor: Color.TRANSPARENT,
+        widthRequest: 50,
+        heightRequest: 50,
+        horizontalOptions: LayoutOptions.START,
+        verticalOptions: LayoutOptions.END,
+        onClicked: () => {
+            let popup = ui.createPopup({
+                        title: "Constant",
+                        content: ui.createStackLayout({
+                            children: [
+                                // Sử dụng Utils.getMath để render chuẩn LaTeX
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("G = " + numberFormat(G, 3)),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("c = " + numberFormat(c, 3)),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("\\hbar = " + numberFormat(planck, 3)),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                                ui.createLatexLabel({
+                                    text: Utils.getMath("K = " + numberFormat(K, 3)),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                })
+                            ]
+                        })
+                    });
+                    popup.show();
+        },
+    });
+
+    return button;
+};
+
+var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
+var getPublicationMultiplierFormula = (symbol) => "\\frac{{" + symbol + "}^{0.164}}{3}";
+var getTau = () => currency.value;
+var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.value.abs()).log10().toNumber();
+
+//getValue
+var getDT = (level) => {
+    switch (level) {
+        case 1:
+            return BigNumber.from(1);
+        default:
+            return BigNumber.ZERO;
+    }
+}
+
+var getMI = (level) => {
+    return level * BigNumber.TEN.pow(-1);
+}
+
+var getGAMMA = (level) => {
+    return (BigNumber.from(0.9) - level / BigNumber.TEN.pow(2)).max(BigNumber.from(0.1));
+}
+
+init();
