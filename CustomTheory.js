@@ -26,7 +26,7 @@ class Stat {
     }
 
     reset() {
-        this.value = this._default.clone();
+        this.value = this._default;
     }
 }
 
@@ -52,17 +52,17 @@ var E1, dt, mi, gamma;
 var E1nowLevel = 0;
 
 //constant
-const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathcal{G}")), 
-    c = new Constant(BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), Symbol.create("c", "c")), 
-    planck = new Constant(BigNumber.from(1.055) * BigNumber.TEN.pow(-34), Symbol.create("planck", "\\hbar")), 
+const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
+    c = new Constant(BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), Symbol.create("c", "\\mathit{c}")), 
+    planck = new Constant(BigNumber.from(1.055) * BigNumber.TEN.pow(-34), Symbol.create("h", "\\hbar")), 
     K = new Constant(BigNumber.from(3.9628) * BigNumber.TEN.pow(15), Symbol.create("K", "\\mathcal{K}"));
 
 //symbol
-var EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathcal{E}")), 
+var EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")), 
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
     M = new Stat(BigNumber.TEN.pow(12), Symbol.create("M", "\\mathcal{M}")), 
     Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n")),
-    DM = new Stat(BigNumber.ZERO, Symbol.create("DM", "\\Omega_d"));
+    DM = new Stat(BigNumber.ZERO, Symbol.create("Ω_d", "\\Omega_d"));
 
 //dynamicLabel
 var dynamicLabel1;
