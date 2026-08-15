@@ -5,6 +5,22 @@ import { theory } from "./api/Theory";
 import { Utils } from "./api/Utils";
 import { Thickness } from "./api/ui/properties/Thickness";
 import { Color } from "./api/ui/properties/Color";
+import { LineBreakMode } from "./api/ui/properties/LineBreakMode";
+import { FontFamily } from "./api/ui/properties/FontFamily";
+import { FontAttributes } from "./api/ui/properties/FontAttributes";
+
+//class
+class Stat {
+    constructor(defaultValue) {
+        this.value = defaultValue;
+        this._default = defaultValue;
+    }
+
+    reset() {
+        this.value = this._default;
+    }
+}
+
 
 var id = "revitalize_of_black_hole";
 var name = "Revitalize of Black Hole";
@@ -18,8 +34,14 @@ var E1, dt, mi, gamma;
 var E1nowLevel = 0;
 
 //constant
-var G = BigNumber.from(6.674) * BigNumber.TEN.pow(-11), c = BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), planck = BigNumber.from(1.055) * BigNumber.TEN.pow(-34), K = BigNumber.from(3.9628) * BigNumber.TEN.pow(15);
-var EVal = BigNumber.ZERO, t = BigNumber.ZERO, M = BigNumber.TEN.pow(12), Cn = BigNumber.ZERO;
+const G = BigNumber.from(6.674) * BigNumber.TEN.pow(-11), c = BigNumber.from(2.99792458) * BigNumber.TEN.pow(8), planck = BigNumber.from(1.055) * BigNumber.TEN.pow(-34), K = BigNumber.from(3.9628) * BigNumber.TEN.pow(15);
+
+//symbol
+var EVal = new Stat(BigNumber.ZERO), 
+    t = new Stat(BigNumber.ZERO), 
+    M = new Stat(BigNumber.TEN.pow(12)), 
+    Cn = new Stat(BigNumber.ZERO),
+    DM = new Stat(BigNumber.ZERO)
 
 //dynamicLabel
 var dynamicLabel1;
@@ -106,8 +128,6 @@ var init = () => {
     /////////////////////
     // Permanent Upgrades
     theory.createPublicationUpgrade(0, currency, 1e10);
-    theory.createBuyAllUpgrade(1, currency, 1e13);
-    theory.createAutoBuyerUpgrade(2, currency, 1e30);
 
     ///////////////////////
     //// Milestone Upgrades
@@ -124,39 +144,39 @@ var updateAvailability = () => {
 var tick = (elapsedTime, multiplier) => {
     //calculate
     let realTime = BigNumber.from(elapsedTime * multiplier);
-    if (M == 0) {
+    if (M.value == 0) {
         realTime = 0;
     }
-    let time = realTime * getDT(dt.level);
+    let time = TIMEFormula(realTime);
     let bonus = theory.publicationMultiplier;
 
-    let P1 = (BigNumber.from(81) * c.pow(3) / (BigNumber.from(32) * G)) * (EVal / (M + BigNumber.ONE));
-    let P2 = BigNumber.from(6.321) * M;
+    let P1 = (BigNumber.from(81) * c.pow(3) / (BigNumber.from(32) * G)) * (EVal.value / (M.value + BigNumber.ONE));
+    let P2 = BigNumber.from(6.321) * M.value;
     let P_abs = P1.min(P2);
-    let E_drained = EVal.min(P_abs * time);
+    let E_drained = EVal.value.min(P_abs * time);
     let dE = - E_drained;
 
-    let dM = getMI(mi.level) * (BigNumber.ONE - getGAMMA(gamma.level)) * -dE / c.pow(2) - time * K / (BigNumber.ONE + M.pow(2));
+    let dM = getMI(mi.level) * (BigNumber.ONE - getGAMMA(gamma.level)) * -dE / c.pow(2) - time * K / (BigNumber.ONE + M.value.pow(2));
 
     if (dt.level > 0) {
-        M += dM;
-        M = M.max(BigNumber.ZERO);
+        M.value += dM;
+        M.value = M.value.max(BigNumber.ZERO);
 
-        EVal += dE;
+        EVal.value += dE;
 
-        t += realTime;
+        t.value += realTime;
 
-        currency.value += realTime * M / BigNumber.TEN.pow(11);
+        currency.value += realTime * M.value / BigNumber.TEN.pow(11);
 
         if (E1.level > E1nowLevel) {
-            EVal += (E1.level - E1nowLevel) * BigNumber.TEN.pow(28);
+            EVal.value += (E1.level - E1nowLevel) * BigNumber.TEN.pow(28);
             E1nowLevel = E1.level;
         }
     }
 
     //dynamicLabel
     if (dynamicLabel1) {
-        dynamicLabel1.text = Utils.getMath("\\text{Dark Matter Gain: } " + numberFormat(t / 90, 3))
+        dynamicLabel1.text = Utils.getMath("\\text{You will earn }" + numberFormat(DMFormula(), 3) + "\\text{ Dark Matter\\\\}")
     }
 
     theory.invalidateQuaternaryValues();
@@ -164,20 +184,22 @@ var tick = (elapsedTime, multiplier) => {
 }
 
 //Equation
-var getInternalState = () => `${EVal} ${t} ${M} ${Cn}`
+var getInternalState = () => `${EVal.value} ${t.value} ${M.value} ${Cn.value} ${DM.value}`
 
 var setInternalState = (state) => {
     let values = state.split(" ");
-    if (values.length > 0) EVal = parseBigNumber(values[0]);
-    if (values.length > 1) t = parseBigNumber(values[1]);
-    if (values.length > 2) M = parseBigNumber(values[2]);
-    if (values.length > 3) Cn = parseBigNumber(values[3]);
+    if (values.length > 0) EVal.value = parseBigNumber(values[0]);
+    if (values.length > 1) t.value = parseBigNumber(values[1]);
+    if (values.length > 2) M.value = parseBigNumber(values[2]);
+    if (values.length > 3) Cn.value = parseBigNumber(values[3]);
+    if (values.length > 4) DM.value = parseBigNumber(values[4]);
 }
 
 var getPrimaryEquation = () => {
     let result = "";
     let scale = 1.1;
     result += "\\dot{\\rho} = \\frac{M}{10^{11}} \\\\\\\\";
+    result += "\\dot{t} = dt \\cdot \\left(1+DM\\right) \\\\\\\\";
     result += "\\frac{dE}{dt} = -\\min\\left(E,P_{abs}\\right) \\\\\\\\";
     result += "\\frac{dM}{dt} = -\\frac{dE}{dt} \\cdot \\frac{\\mu (1 - \\gamma)}{c^2} - \\frac{K}{M^2 + 1}";
     theory.primaryEquationScale = scale;
@@ -195,19 +217,20 @@ var getQuaternaryEntries = () => {
         quaternaryEntries.push(new QuaternaryEntry("t", null));
         quaternaryEntries.push(new QuaternaryEntry("t_r", null));
     }
-    quaternaryEntries[0].value = EVal.toString();
-    quaternaryEntries[1].value = M.toString();
-    let rs = BigNumber.TWO * G * M / c.pow(2);
+    quaternaryEntries[0].value = EVal.value.toString();
+    quaternaryEntries[1].value = M.value.toString();
+    let rs = BigNumber.TWO * G * M.value / c.pow(2);
     quaternaryEntries[2].value = numberFormat(rs, 2);
-    quaternaryEntries[3].value = (t * getDT(dt.level)).toString();
-    quaternaryEntries[4].value = t.toString();
+    quaternaryEntries[3].value = TIMEFormula(t.value).toString();
+    quaternaryEntries[4].value = t.value.toString();
     return quaternaryEntries;
 }
 
 var getTertiaryEquation = () => {
     let result = "";
-    let tEvap = M.pow(BigNumber.THREE) / (BigNumber.THREE * K);
+    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K);
     result += "T_{evap} = " + numberFormat(tEvap / getDT(dt.level), 2);
+    result += ", DM = " + numberFormat(DM.value, 3);
     return result;
 }
 
@@ -216,12 +239,12 @@ var getSecondaryEquation = () => theory.latexSymbol + "=\\max\\rho";
 var getEquationOverlay = () => {
     let button1 = ui.createButton({
         text: "?",
-        fontSize: 40,
+        fontSize: 30,
         textColor: Color.TEXT,
         backgroundColor: Color.TRANSPARENT,
         borderColor: Color.TRANSPARENT,
-        widthRequest: 50,
-        heightRequest: 50,
+        widthRequest: 40,
+        heightRequest: 40,
         horizontalOptions: LayoutOptions.START_AND_EXPAND,
         verticalOptions: LayoutOptions.END_AND_EXPAND,
         onPressed: () => {
@@ -279,13 +302,13 @@ var getEquationOverlay = () => {
     });
 
     let button2 = ui.createButton({
-        text: "꥟",
-        fontSize: 40,
+        text: "⚛",
+        fontSize: 30,
         textColor: Color.TEXT,
         backgroundColor: Color.TRANSPARENT,
         borderColor: Color.TRANSPARENT,
-        widthRequest: 50,
-        heightRequest: 50,
+        widthRequest: 40,
+        heightRequest: 40,
         horizontalOptions: LayoutOptions.START_AND_EXPAND,
         verticalOptions: LayoutOptions.START_AND_EXPAND,
         onPressed: () => {
@@ -297,14 +320,22 @@ var getEquationOverlay = () => {
                 horizontalTextAlignment: TextAlignment.CENTER
             });
             let popup = ui.createPopup({
-                        title: "Collapse Info",
+                        title: "Collapse",
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("\\text{Collapses: } " + numberFormat(Cn, 0)),
+                                    text: Utils.getMath("\\text{Reset your {\\rho}, M, E, t, t_r\\\\ and dt, {\\mu}, {\\gamma} upgrade\\\\}"),
                                     horizontalTextAlignment: TextAlignment.CENTER
                                 }),
-                                dynamicLabel1
+                                dynamicLabel1,
+                                ui.createButton({
+                                    text: "Collapse!",
+                                    fontSize: 20,
+                                    heightRequest: 35,
+                                    onReleased: () => {
+                                        collapseReset();
+                                    }
+                                })
                             ]
                         })
                     });
@@ -323,6 +354,29 @@ var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
 var getPublicationMultiplierFormula = (symbol) => "\\frac{{" + symbol + "}^{0.164}}{3}";
 var getTau = () => currency.value;
 var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.value.abs()).log10().toNumber();
+
+
+//reset_layer
+var collapseReset = () => {
+    Cn.value++;
+    DM.value += DMFormula();
+    currency.value = BigNumber.ZERO;
+    M.reset();
+    EVal.reset();
+    t.reset();
+    dt.level = 0;
+    mi.level = 0;
+    gamma.level = 0;
+}
+
+//formula
+var DMFormula = () => {
+    return t.value / 90;
+}
+
+var TIMEFormula = (t) => {
+    return t * getDT(dt.level) * (BigNumber.ONE + DM.value);
+}
 
 //getValue
 var getE = (level) => {
