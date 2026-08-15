@@ -147,7 +147,7 @@ var tick = (elapsedTime, multiplier) => {
     if (M.value == 0) {
         realTime = 0;
     }
-    let time = TIMEFormula(realTime);
+    let time = realTime * TIMEFormula();
     let bonus = theory.publicationMultiplier;
 
     let P1 = (BigNumber.from(81) * c.pow(3) / (BigNumber.from(32) * G)) * (EVal.value / (M.value + BigNumber.ONE));
@@ -221,7 +221,7 @@ var getQuaternaryEntries = () => {
     quaternaryEntries[1].value = M.value.toString();
     let rs = BigNumber.TWO * G * M.value / c.pow(2);
     quaternaryEntries[2].value = numberFormat(rs, 2);
-    quaternaryEntries[3].value = TIMEFormula(t.value).toString();
+    quaternaryEntries[3].value = (t.value * TIMEFormula()).toString();
     quaternaryEntries[4].value = t.value.toString();
     return quaternaryEntries;
 }
@@ -229,7 +229,7 @@ var getQuaternaryEntries = () => {
 var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K);
-    result += "T_{evap} = " + numberFormat(tEvap / getDT(dt.level), 2);
+    result += "T_{evap} = " + numberFormat(tEvap / TIMEFormula(), 2);
     result += ", DM = " + numberFormat(DM.value, 3);
     return result;
 }
@@ -237,6 +237,7 @@ var getTertiaryEquation = () => {
 var getSecondaryEquation = () => theory.latexSymbol + "=\\max\\rho";
 
 var getEquationOverlay = () => {
+    //question
     let button1 = ui.createButton({
         text: "?",
         fontSize: 30,
@@ -301,6 +302,7 @@ var getEquationOverlay = () => {
         },
     });
 
+    //collapse
     let button2 = ui.createButton({
         text: "⚛",
         fontSize: 30,
@@ -315,25 +317,37 @@ var getEquationOverlay = () => {
             button2.textColor = Color.TEXT_DARK;
         },
         onReleased: () => {
+            let isReady = M.value.toNumber() == 0; 
+        
+            let colapText = isReady ? "Collapse!" : "You need to achieve a value of 0 for M.";
+            let colapFontSize = isReady ? 20 : 15;
+
             button2.textColor = Color.TEXT;
+
             dynamicLabel1 = ui.createLatexLabel({
-                horizontalTextAlignment: TextAlignment.CENTER
+                horizontalTextAlignment: TextAlignment.CENTER,
+                verticalTextAlignment: TextAlignment.CENTER
             });
+            
             let popup = ui.createPopup({
                         title: "Collapse",
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
                                     text: Utils.getMath("\\text{Reset your {\\rho}, M, E, t, t_r\\\\ and dt, {\\mu}, {\\gamma} upgrade\\\\}"),
-                                    horizontalTextAlignment: TextAlignment.CENTER
+                                    horizontalTextAlignment: TextAlignment.CENTER,
+                                    verticalTextAlignment: TextAlignment.CENTER
                                 }),
                                 dynamicLabel1,
                                 ui.createButton({
-                                    text: "Collapse!",
-                                    fontSize: 20,
+                                    text: colapText,
+                                    fontSize: colapFontSize,
                                     heightRequest: 35,
                                     onReleased: () => {
-                                        collapseReset();
+                                        if (isReady) {
+                                            collapseReset();
+                                            popup.hide(); // Tự động đóng popup sau khi reset thành công
+                                        }
                                     }
                                 })
                             ]
@@ -374,8 +388,8 @@ var DMFormula = () => {
     return t.value / 90;
 }
 
-var TIMEFormula = (t) => {
-    return t * getDT(dt.level) * (BigNumber.ONE + DM.value);
+var TIMEFormula = () => {
+    return getDT(dt.level) * (BigNumber.ONE + DM.value);
 }
 
 //getValue
