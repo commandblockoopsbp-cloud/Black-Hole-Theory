@@ -7,30 +7,26 @@ import { Thickness } from "./api/ui/properties/Thickness";
 import { Color } from "./api/ui/properties/Color";
 
 //class
-const _internalToken = {};
 class Symbol {
-    constructor(token, normal, latex) {
-        if (token !== _internalToken) {
-            throw new Error("Constructor is private! Use Symbol.create() instead.");
-        }
+    constructor(normal, latex) {
         this.normal = normal;
         this.latex = latex;
     }
 
     static create(normal, latex) {
-        return new Symbol(_internalToken, normal, latex);
+        return new Symbol(normal, latex);
     }
 }
 
 class Stat {
     constructor(defaultValue, symbol) {
-        this.value = defaultValue;
-        this._default = defaultValue;
+        this.value = BigNumber.from(defaultValue);
+        this._default = BigNumber.from(defaultValue);
         this.symbol = symbol;
     }
 
     reset() {
-        this.value = this._default;
+        this.value = this._default.clone();
     }
 }
 
@@ -140,7 +136,7 @@ var tick = (elapsedTime, multiplier) => {
     let E_drained = EVal.value.min(P_abs * time);
     let dE = - E_drained;
 
-    let dM = getMI(mi.zlevel) * (BigNumber.ONE - getGAMMA(gamma.level)) * -dE / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2));
+    let dM = getMI(mi.level) * (BigNumber.ONE - getGAMMA(gamma.level)) * -dE / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2));
 
     if (dt.level > 0) {
         M.value += dM;
