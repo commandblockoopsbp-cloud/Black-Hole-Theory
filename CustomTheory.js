@@ -37,6 +37,26 @@ class Constant {
     }
 }
 
+class Upgrade {
+    constructor(upgrade, symbol, getValue, getDesc = null) {
+        this.upgrade = upgrade;
+        this.symbol = symbol;
+        this._getValue = getValue;
+        if (getValue) {
+            if (getDesc == null) getDesc = (level) => `${symbol.latex} = ${getValue(level).toString()}`;
+            this.upgrade.getDescription = (_) => Utils.getMath(getDesc(this.upgrade.level));
+            this.upgrade.getInfo = (amount) => Utils.getMathTo(
+                getDesc(this.upgrade.level), 
+                getDesc(this.upgrade.level + amount)
+            );
+        }
+    }
+
+    get value() {
+        return this._getValue(this.upgrade.level);
+    }
+}
+
 
 var id = "revitalize_of_black_hole";
 var name = "Revitalize of Black Hole";
@@ -48,8 +68,8 @@ var version = 1;
 var currency, darkMatter;
 
 //upgrade
-var E1, dt, mi, gamma;
-var E1nowLevel = 0;
+var E1, dt, mi, gamma,
+    omega;
 
 //constant
 const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
@@ -61,8 +81,7 @@ const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.cr
 var EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")), 
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
     M = new Stat(BigNumber.TEN.pow(12), Symbol.create("M", "\\mathcal{M}")), 
-    Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n")),
-    DM = new Stat(BigNumber.ZERO, Symbol.create("Ω_d", "\\Omega_d"));
+    Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"))
 
 //dynamicLabel
 var dynamicLabel1;
@@ -75,34 +94,47 @@ var init = () => {
     // E1
     {
         E1 = theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
+        E1.bought = (amount) => {
+            EVal.value += amount * getE(1);
+        };
         E1.getDescription = (_) => Utils.getMath(EVal.symbol.latex + " \\uparrow " + getE(1));
         E1.getInfo = (amount) => Utils.getMath(EVal.symbol.latex + "\\text{ increase by }" + getE(1));
     }
 
     // dt
     {
-        let getDesc = (level) => "d" + t.symbol.latex + "=" + getDT(level).toString();
-        dt = theory.createUpgrade(0, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE)));
-        dt.maxLevel = 1;
-        dt.getDescription = (_) => Utils.getMath(getDesc(dt.level));
-        dt.getInfo = (amount) => Utils.getMathTo(getDesc(dt.level), getDesc(dt.level + amount));
+        dt = new Upgrade(
+            theory.createUpgrade(0, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE))), 
+            new Symbol("d" + t.symbol.normal, "d" + t.symbol.latex),
+            (level) => {
+                switch (level) {
+                    case 1:
+                        return BigNumber.TEN.pow(18);
+                    default:
+                        return BigNumber.ZERO;
+                }
+            }
+        );
+        dt.upgrade.maxLevel = 1;
     }
 
     // mi
     {
-        let getDesc = (level) => `\\mu = ${getMI(level).toString()}`;
-        mi = theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2()));
-        mi.getDescription = (_) => Utils.getMath(getDesc(mi.level));
-        mi.getInfo = (amount) => Utils.getMathTo(getDesc(mi.level), getDesc(mi.level + amount));
+        mi = new Upgrade(
+            theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
+            new Symbol("mi", "\\mu"), 
+            (level) => (BigNumber.TEN.pow(-1) + level * BigNumber.TEN.pow(-2))
+        );
     }
 
     // gamma
     {
-        let getDesc = (level) => `\\gamma = ${getGAMMA(level).toString()}`;
-        gamma = theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(2).log2()));
-        gamma.maxLevel = 16;
-        gamma.getDescription = (_) => Utils.getMath(getDesc(gamma.level));
-        gamma.getInfo = (amount) => Utils.getMathTo(getDesc(gamma.level), getDesc(gamma.level + amount));
+        gamma = new Upgrade(
+            theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(2).log2())), 
+            new Symbol("gamma", "\\gamma"), 
+            (level) => (BigNumber.from(0.9) - level / BigNumber.from(20)).max(BigNumber.from(0.1))
+        );
+        gamma.upgrade.maxLevel = 16;
     }
 
     /////////////////////
@@ -114,11 +146,33 @@ var init = () => {
     theory.setMilestoneCost(new LinearCost(25, 25));
 
 
+
+    //darkMatter
+    darkMatter = theory.createCurrency("Ψ", "\\Psi");
+    ///////////////////
+    // Regular Upgrades
+
+    //omega
+    {
+        omega = new Upgrade(
+            theory.createUpgrade(3, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
+            new Symbol("omega", "\\omega"), 
+            (level) => (BigNumber.ONE + BigNumber.from(0.15) * level)
+        );
+    }
+
+    /////////////////////
+    // Permanent Upgrades
+
+    ///////////////////////
+    //// Milestone Upgrades
+
+
     updateAvailability();
 }
 
 var updateAvailability = () => {
-    
+    omega.upgrade.isAvailable = Cn.value > 0;
 }
 
 var tick = (elapsedTime, multiplier) => {
@@ -136,7 +190,7 @@ var tick = (elapsedTime, multiplier) => {
     let E_drained = EVal.value.min(P_abs * time);
     let dE = - E_drained;
 
-    let dM = getMI(mi.level) * (BigNumber.ONE - getGAMMA(gamma.level)) * -dE / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2));
+    let dM = mi.value * (BigNumber.ONE - gamma.value) * -dE / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2));
 
     if (dt.level > 0) {
         M.value += dM;
@@ -147,11 +201,6 @@ var tick = (elapsedTime, multiplier) => {
         t.value += realTime;
 
         currency.value += realTime * M.value / BigNumber.TEN.pow(11);
-
-        if (E1.level > E1nowLevel) {
-            EVal.value += (E1.level - E1nowLevel) * BigNumber.TEN.pow(28);
-            E1nowLevel = E1.level;
-        }
     }
 
     //dynamicLabel
@@ -164,7 +213,7 @@ var tick = (elapsedTime, multiplier) => {
 }
 
 //Equation
-var getInternalState = () => `${EVal.value} ${t.value} ${M.value} ${Cn.value} ${DM.value}`
+var getInternalState = () => `${EVal.value} ${t.value} ${M.value} ${Cn.value}`
 
 var setInternalState = (state) => {
     let values = state.split(" ");
@@ -172,16 +221,21 @@ var setInternalState = (state) => {
     if (values.length > 1) t.value = parseBigNumber(values[1]);
     if (values.length > 2) M.value = parseBigNumber(values[2]);
     if (values.length > 3) Cn.value = parseBigNumber(values[3]);
-    if (values.length > 4) DM.value = parseBigNumber(values[4]);
 }
 
 var getPrimaryEquation = () => {
     let result = "";
     let scale = 1.1;
-    result += "\\dot{" + currency.symbol + "} = \\frac{" + M.symbol.latex + "}{10^{11}} \\\\\\\\";
-    result += "\\dot{" + t.symbol.latex + "} = d" + t.symbol.latex + " \\cdot \\left(1+" + DM.symbol.latex + "\\right) \\\\\\\\";
+    result += "\\dot{" + currency.symbol + "} = \\frac{";
+    if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot"
+    result += M.symbol.latex + "}{10^{11}} \\\\\\\\"
+
+    result += "\\dot{" + t.symbol.latex + "} = d" + t.symbol.latex + " \\cdot \\left(1+" + darkMatter.symbol + "\\right) \\\\\\\\";
+
     result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
-    result += "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{\\mu (1 - \\gamma)}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
+
+    result += "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{" + mi.symbol.latex + " (1 - " + gamma.symbol.latex + ")}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
+
     theory.primaryEquationScale = scale;
     theory.primaryEquationHeight = 150 * scale;
     return "\\begin{matrix}" + result + "\\end{matrix}";
@@ -210,7 +264,6 @@ var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
     result += "T_{evap} = " + numberFormat(tEvap / TIMEFormula(), 2);
-    result += ", " + DM.symbol.latex + " = " + numberFormat(DM.value, 3);
     return result;
 }
 
@@ -353,7 +406,7 @@ var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.valu
 //reset_layer
 var collapseReset = () => {
     Cn.value++;
-    DM.value += DMFormula();
+    darkMatter.value += DMFormula();
     currency.value = BigNumber.ZERO;
     M.reset();
     EVal.reset();
@@ -362,6 +415,10 @@ var collapseReset = () => {
     mi.level = 0;
     gamma.level = 0;
     theory.clearGraph();
+    theory.invalidatePrimaryEquation();
+    theory.invalidateQuaternaryValues();
+    theory.invalidateSecondaryEquation();
+    theory.invalidateTertiaryEquation();
 }
 
 
@@ -371,30 +428,13 @@ var DMFormula = () => {
 }
 
 var TIMEFormula = () => {
-    return getDT(dt.level) * (BigNumber.ONE + DM.value);
+    return dt.value * (BigNumber.ONE + darkMatter.value);
 }
 
 
 //getValue
 var getE = (level) => {
     return level * BigNumber.TEN.pow(28);
-}
-
-var getDT = (level) => {
-    switch (level) {
-        case 1:
-            return BigNumber.TEN.pow(18);
-        default:
-            return BigNumber.ZERO;
-    }
-}
-
-var getMI = (level) => {
-    return BigNumber.TEN.pow(-1) + level * BigNumber.TEN.pow(-2);
-}
-
-var getGAMMA = (level) => {
-    return (BigNumber.from(0.9) - level / BigNumber.from(20)).max(BigNumber.from(0.1));
 }
 
 
