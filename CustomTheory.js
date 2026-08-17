@@ -53,7 +53,11 @@ class Upgrade {
     }
 
     get value() {
-        return this._getValue(this.upgrade.level);
+        return BigNumber.from(this._getValue(this.upgrade.level));
+    }
+
+    reset() {
+        this.upgrade.level = 0;
     }
 }
 
@@ -192,7 +196,7 @@ var tick = (elapsedTime, multiplier) => {
 
     let dM = mi.value * (BigNumber.ONE - gamma.value) * -dE / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2));
 
-    if (dt.level > 0) {
+    if (dt.upgrade.level > 0) {
         M.value += dM;
         M.value = M.value.max(BigNumber.ZERO);
 
@@ -369,7 +373,7 @@ var getEquationOverlay = () => {
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, t, t_r\\\\ and dt, {\\mu}, {\\gamma} upgrade\\\\}"),
+                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, t, t_r\\\\ and {" + dt.symbol.latex + "}, {" + mi.symbol.latex + "}, {" + gamma.symbol.latex + "} upgrade\\\\}"),
                                     horizontalTextAlignment: TextAlignment.CENTER,
                                     verticalTextAlignment: TextAlignment.CENTER
                                 }),
@@ -413,9 +417,9 @@ var collapseReset = () => {
     M.reset();
     EVal.reset();
     t.reset();
-    dt.level = 0;
-    mi.level = 0;
-    gamma.level = 0;
+    dt.reset();
+    mi.reset();
+    gamma.reset();
     theory.clearGraph();
     theory.invalidatePrimaryEquation();
     theory.invalidateQuaternaryValues();
