@@ -200,7 +200,9 @@ var tick = (elapsedTime, multiplier) => {
 
         t.value += realTime;
 
-        currency.value += realTime * M.value / BigNumber.TEN.pow(11);
+        let addCurrency = realTime * M.value / BigNumber.TEN.pow(11);
+        if (omega.upgrade.isAvailable) addCurrency *= omega.value.pow(1.25);
+        currency.value += addCurrency;
     }
 
     //dynamicLabel
