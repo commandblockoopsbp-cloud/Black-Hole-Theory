@@ -216,6 +216,7 @@ var tick = (elapsedTime, multiplier) => {
 
     theory.invalidateQuaternaryValues();
     theory.invalidateTertiaryEquation();
+    updateAvailability();
 }
 
 //Equation
