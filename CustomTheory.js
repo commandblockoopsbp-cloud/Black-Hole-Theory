@@ -229,7 +229,7 @@ var setInternalState = (state) => {
     if (values.length > 1) t.value = parseBigNumber(values[1]);
     if (values.length > 2) M.value = parseBigNumber(values[2]);
     if (values.length > 3) Cn.value = parseBigNumber(values[3]);
-    if (values.length > 4) sumD = parseBigNumber(values[4]);
+    if (values.length > 4) sumDM = parseBigNumber(values[4]);
 }
 
 var getPrimaryEquation = () => {
@@ -410,7 +410,7 @@ var getEquationOverlay = () => {
 var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
 var getPublicationMultiplierFormula = (symbol) => "\\frac{{" + symbol + "}^{0.164}}{3}";
 var getTau = () => currency.value;
-var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.value.abs()).log10().toNumber();
+var get2DGraphValue = () => M.value.sign * (BigNumber.ONE + M.value.abs()) .log10().toNumber();
 
 
 //reset_layer
