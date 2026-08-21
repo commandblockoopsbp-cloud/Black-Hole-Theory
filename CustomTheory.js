@@ -85,7 +85,7 @@ const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.cr
 var EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")), 
     t_r = new Stat(BigNumber.ZERO, Symbol.create("t", "t_r")), 
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
-    M = new Stat(BigNumber.TEN.pow(12), Symbol.create("M", "\\mathcal{M}")), 
+    M = new Stat(BigNumber.TEN.pow(10), Symbol.create("M", "\\mathcal{M}")), 
     Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"));
 
 //dynamicLabel
@@ -191,7 +191,7 @@ var tick = (elapsedTime, multiplier) => {
     let time = realTime * TIMEFormula();
     let bonus = theory.publicationMultiplier;
 
-    let P1 = (BigNumber.from(81) * c.value.pow(3) / (BigNumber.from(32) * G.value)) * (EVal.value / (M.value + BigNumber.ONE));
+    let P1 = getk() * M.value.pow(2) * (EVal.value + BigNumber.ONE).log10();
     let P2 = BigNumber.from(6.321) * M.value;
     let P_abs = P1.min(P2);
     let E_drained = EVal.value.min(P_abs * time);
@@ -208,7 +208,7 @@ var tick = (elapsedTime, multiplier) => {
         t.value += time;
         t_r.value += realTime;
 
-        let addCurrency = realTime * M.value / BigNumber.TEN.pow(11);
+        let addCurrency = realTime * M.value / BigNumber.TEN.pow(9);
         if (omega.upgrade.isAvailable) addCurrency *= omega.value.pow(1.25);
         currency.value += addCurrency;
     }
@@ -241,9 +241,9 @@ var getPrimaryEquation = () => {
     let Epsi = getEpsilon();
     result += "\\dot{" + currency.symbol + "} = \\frac{";
     if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot";
-    result += M.symbol.latex + "}{10^{11}} \\\\\\\\";
+    result += M.symbol.latex + "}{10^{9}} \\\\\\\\";
 
-    result += "\\dot{" + t.symbol.latex + "} = \\sqrt{\\frac{1 + " + Epsi.symbol.latex + "}{" + Epsi.symbol.latex + "}} \\\\\\\\";
+    result += "d" + t.symbol.latex + " = \\sqrt{1 + " + Epsi.symbol.latex + "} \\\\\\\\";
 
     result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
 
@@ -287,7 +287,7 @@ var getSecondaryEquation = () => {
     let result = "";
     let Epsi = getEpsilon();
     result += theory.latexSymbol + "=\\max\\rho";
-    result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r - r_s}{r_s}";
+    result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
     return result;
 }
 
@@ -314,7 +314,7 @@ var getEquationOverlay = () => {
                             children: [
                                 // --- 1. CÁC CÔNG THỨC P1, P2, P_abs ---
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("P_1 = \\frac{81 " + c.symbol.latex + "^3 \\cdot " + EVal.symbol.latex + "}{32 " + G.symbol.latex + " \\cdot \\left(" + M.symbol.latex + " + 1\\right)}"),
+                                    text: Utils.getMath("P_1 = " + numberFormat(getk(), 1) + " \\cdot " + M.symbol.latex + "^2 \\cdot log_{10}\\left(1 + " + EVal.symbol.latex + "\\right)"),
                                     horizontalTextAlignment: TextAlignment.CENTER
                                 }),
                                 ui.createLatexLabel({
@@ -447,18 +447,22 @@ var collapseReset = () => {
 
 //formula
 var DMFormula = () => {
-    return t_r.value / BigNumber.from(110);
+    return t_r.value / BigNumber.from(90);
 }
 
 var TIMEFormula = () => {
     let Epsi = getEpsilon();
-    return ((BigNumber.ONE + Epsi.value) / Epsi.value).sqrt();
+    return (BigNumber.ONE + Epsi.value).sqrt();
 }
 
 
 //getValue
-var getE = (level) => {
-    return level * BigNumber.TEN.pow(28);
+var getE = (amount) => {
+    return amount * BigNumber.TEN.pow(22);
+}
+
+var getk = () => {
+    return BigNumber.TEN.pow(-1);
 }
 
 var getSchRadius = () => {
@@ -466,14 +470,12 @@ var getSchRadius = () => {
 }
 
 var getRadiusDiff = () => {
-    return BigNumber.from(1.5) * BigNumber.TEN.pow(-51);
+    let save = BigNumber.from(1.5) * BigNumber.TEN.pow(-51);
+    return BigNumber.from(1.5) * BigNumber.TEN.pow(-41);
 }
 
 var getEpsilon = () => {
-    let under = getSchRadius();
-    let value = BigNumber.ONE;
-    if (under > BigNumber.ZERO) value = getRadiusDiff() / under;
-    return new Constant(value, Symbol.create("ε", "\\epsilon"));
+    return new Constant(getSchRadius() / getRadiusDiff(), Symbol.create("ε", "\\epsilon"));
 }
 
 
