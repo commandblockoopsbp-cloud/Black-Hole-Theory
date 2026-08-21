@@ -83,10 +83,10 @@ const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.cr
 
 //symbol
 var EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")), 
+    t_r = new Stat(BigNumber.ZERO, Symbol.create("t", "t_r")), 
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
     M = new Stat(BigNumber.TEN.pow(12), Symbol.create("M", "\\mathcal{M}")), 
-    Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"))
-    sumDM = BigNumber.ZERO;
+    Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"));
 
 //dynamicLabel
 var dynamicLabel1;
@@ -203,7 +203,8 @@ var tick = (elapsedTime, multiplier) => {
 
         EVal.value += dE;
 
-        t.value += realTime;
+        t.value += time;
+        t_r.value += realTime;
 
         let addCurrency = realTime * M.value / BigNumber.TEN.pow(11);
         if (omega.upgrade.isAvailable) addCurrency *= omega.value.pow(1.25);
@@ -221,27 +222,28 @@ var tick = (elapsedTime, multiplier) => {
 }
 
 //Equation
-var getInternalState = () => `${EVal.value} ${t.value} ${M.value} ${Cn.value} ${sumDM}`
+var getInternalState = () => `${EVal.value} ${t.value} ${t_r.value} ${M.value} ${Cn.value}`
 
 var setInternalState = (state) => {
     let values = state.split(" ");
     if (values.length > 0) EVal.value = parseBigNumber(values[0]);
     if (values.length > 1) t.value = parseBigNumber(values[1]);
-    if (values.length > 2) M.value = parseBigNumber(values[2]);
-    if (values.length > 3) Cn.value = parseBigNumber(values[3]);
-    if (values.length > 4) sumDM = parseBigNumber(values[4]);
+    if (values.length > 2) t_r.value = parseBigNumber(values[2]);
+    if (values.length > 3) M.value = parseBigNumber(values[3]);
+    if (values.length > 4) Cn.value = parseBigNumber(values[4]);
 }
 
 var getPrimaryEquation = () => {
     let result = "";
     let scale = 1.1;
+    let Epsi = getEpsilon();
     result += "\\dot{" + currency.symbol + "} = \\frac{";
-    if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot"
-    result += M.symbol.latex + "}{10^{11}} \\\\\\\\"
+    if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot";
+    result += M.symbol.latex + "}{10^{11}} \\\\\\\\";
 
-    result += "\\dot{" + t.symbol.latex + "} = d" + t.symbol.latex + " \\cdot \\left(1+ \\sum " + darkMatter.symbol + "\\right) \\\\\\\\";
+    result += "\\dot{" + t.symbol.latex + "} = \\sqrt{\\frac{1 + " + Epsi.symbol.latex + "}{" + Epsi.symbol.latex + "}} \\\\\\\\";
 
-    result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = \\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
+    result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
 
     result += "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{" + mi.symbol.latex + " (1 - " + gamma.symbol.latex + ")}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
 
@@ -253,19 +255,21 @@ var getPrimaryEquation = () => {
 var getQuaternaryEntries = () => {
     let quaternaryEntries = [];
     let flagAll = quaternaryEntries.length == 0;
+    let Epsi = getEpsilon();
     if (flagAll) {
         quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry("r_s", null));
+        quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry(t.symbol.latex, null));
-        quaternaryEntries.push(new QuaternaryEntry(t.symbol.latex + "_r", null));
+        quaternaryEntries.push(new QuaternaryEntry(t_r.symbol.latex, null));
     }
-    quaternaryEntries[0].value = EVal.value.toString();
-    quaternaryEntries[1].value = M.value.toString();
-    let rs = BigNumber.TWO * G.value * M.value / c.value.pow(2);
-    quaternaryEntries[2].value = numberFormat(rs, 2);
-    quaternaryEntries[3].value = (t.value * TIMEFormula()).toString();
-    quaternaryEntries[4].value = t.value.toString();
+    quaternaryEntries[0].value = numberFormat(EVal.value, 2);
+    quaternaryEntries[1].value = numberFormat(M.value, 2);
+    quaternaryEntries[2].value = numberFormat(getSchRadius(), 2);
+    quaternaryEntries[3].value = numberFormat(Epsi.value, 2);
+    quaternaryEntries[4].value = numberFormat(t.value, 2);
+    quaternaryEntries[5].value = numberFormat(t_r.value, 2);
     return quaternaryEntries;
 }
 
@@ -273,11 +277,17 @@ var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
     result += "T_{evap} = " + numberFormat(tEvap / TIMEFormula(), 2);
-    result += ", \\sum" + darkMatter.symbol + " = " + sumDM;
+    result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return result;
 }
 
-var getSecondaryEquation = () => theory.latexSymbol + "=\\max\\rho";
+var getSecondaryEquation = () => {
+    let result = "";
+    let Epsi = getEpsilon();
+    result += theory.latexSymbol + "=\\max\\rho";
+    result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r - r_s}{r_s}";
+    return result;
+}
 
 var getEquationOverlay = () => {
     //question
@@ -377,7 +387,7 @@ var getEquationOverlay = () => {
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, t, t_r\\\\ and {" + dt.symbol.latex + "}, {" + mi.symbol.latex + "}, {" + gamma.symbol.latex + "} upgrade\\\\}"),
+                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, {" + t.symbol.latex + "}, {" + t_r.symbol.latex + "}\\\\ and {" + dt.symbol.latex + "}, {" + mi.symbol.latex + "}, {" + gamma.symbol.latex + "} upgrade\\\\}"),
                                     horizontalTextAlignment: TextAlignment.CENTER,
                                     verticalTextAlignment: TextAlignment.CENTER
                                 }),
@@ -416,9 +426,7 @@ var get2DGraphValue = () => M.value.toNumber();
 //reset_layer
 var collapseReset = () => {
     Cn.value++;
-    let AddDM = DMFormula();
-    sumDM += AddDM;
-    darkMatter.value += AddDM;
+    darkMatter.value += DMFormula();
     currency.value = BigNumber.ZERO;
     M.reset();
     EVal.reset();
@@ -436,17 +444,33 @@ var collapseReset = () => {
 
 //formula
 var DMFormula = () => {
-    return t.value / 90;
+    return t_r.value / BigNumber.from(110);
 }
 
 var TIMEFormula = () => {
-    return dt.value * (BigNumber.ONE + sumDM);
+    let Epsi = getEpsilon();
+    return ((BigNumber.ONE + Epsi.value) / Epsi.value).sqrt();
 }
 
 
 //getValue
 var getE = (level) => {
     return level * BigNumber.TEN.pow(28);
+}
+
+var getSchRadius = () => {
+    return BigNumber.TWO * G.value * M.value / c.value.pow(2);
+}
+
+var getRadiusDiff = () => {
+    return BigNumber.from(1.5) * BigNumber.TEN.pow(-51);
+}
+
+var getEpsilon = () => {
+    let under = getSchRadius();
+    let value = BigNumber.ONE;
+    if (under > BigNumber.ZERO) value = getRadiusDiff() / under;
+    return new Constant(value, Symbol.create("ε", "\\epsilon"));
 }
 
 
