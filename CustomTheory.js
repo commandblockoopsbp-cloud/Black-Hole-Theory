@@ -241,7 +241,7 @@ var getPrimaryEquation = () => {
 
     result += "\\dot{" + t.symbol.latex + "} = d" + t.symbol.latex + " \\cdot \\left(1+ \\sum " + darkMatter.symbol + "\\right) \\\\\\\\";
 
-    result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
+    result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = \\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
 
     result += "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{" + mi.symbol.latex + " (1 - " + gamma.symbol.latex + ")}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
 
@@ -273,6 +273,7 @@ var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
     result += "T_{evap} = " + numberFormat(tEvap / TIMEFormula(), 2);
+    result += ", \\sum" + darkMatter.symbol + " = " + sumDM;
     return result;
 }
 
