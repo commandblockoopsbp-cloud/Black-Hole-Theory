@@ -410,7 +410,7 @@ var getEquationOverlay = () => {
 var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
 var getPublicationMultiplierFormula = (symbol) => "\\frac{{" + symbol + "}^{0.164}}{3}";
 var getTau = () => currency.value;
-var get2DGraphValue = () => M.value.sign * (BigNumber.ONE + M.value.abs()) .log10().toNumber();
+var get2DGraphValue = () => M.value.toNumber();
 
 
 //reset_layer
@@ -440,7 +440,7 @@ var DMFormula = () => {
 }
 
 var TIMEFormula = () => {
-    return dt.value * (BigNumber.ONE + darkMatter.value);
+    return dt.value * (BigNumber.ONE + sumDM);
 }
 
 
