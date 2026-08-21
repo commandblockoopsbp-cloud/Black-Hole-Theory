@@ -72,7 +72,7 @@ var version = 1;
 var currency, darkMatter;
 
 //upgrade
-var E1, dt, mi, gamma,
+var E1, startTheory, mi, gamma,
     omega;
 
 //constant
@@ -96,6 +96,14 @@ var init = () => {
     ///////////////////
     // Regular Upgrades
 
+    // startTheory
+    {   
+        startTheory = theory.createUpgrade(0, currency, new FreeCost());
+        startTheory.getDescription = (_) => "Initialize Singularity";
+        startTheory.getInfo = (amount) => "Begin the black hole accretion cycle.";
+        startTheory.maxLevel = 1;
+    }
+
     // E1
     {
         E1 = theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
@@ -104,23 +112,6 @@ var init = () => {
         };
         E1.getDescription = (_) => Utils.getMath(EVal.symbol.latex + " \\uparrow " + getE(1));
         E1.getInfo = (amount) => Utils.getMath(EVal.symbol.latex + "\\text{ increase by }" + getE(1));
-    }
-
-    // dt
-    {
-        dt = new Upgrade(
-            theory.createUpgrade(0, currency, new FirstFreeCost(new ConstantCost(BigNumber.ONE))), 
-            new Symbol("d" + t.symbol.normal, "d" + t.symbol.latex),
-            (level) => {
-                switch (level) {
-                    case 1:
-                        return BigNumber.TEN.pow(18);
-                    default:
-                        return BigNumber.ZERO;
-                }
-            }
-        );
-        dt.upgrade.maxLevel = 1;
     }
 
     // mi
@@ -197,7 +188,7 @@ var tick = (elapsedTime, multiplier) => {
 
     let dM = mi.value * (BigNumber.ONE - gamma.value) * -dE / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2));
 
-    if (dt.upgrade.level > 0) {
+    if (startTheory.level > 0) {
         M.value += dM;
         M.value = M.value.max(BigNumber.ZERO);
 
@@ -387,7 +378,7 @@ var getEquationOverlay = () => {
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, {" + t.symbol.latex + "}, {" + t_r.symbol.latex + "}\\\\ and {" + dt.symbol.latex + "}, {" + mi.symbol.latex + "}, {" + gamma.symbol.latex + "} upgrade\\\\}"),
+                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, {" + t.symbol.latex + "}, {" + t_r.symbol.latex + "}\\\\ and {" + mi.symbol.latex + "}, {" + gamma.symbol.latex + "} upgrade\\\\}"),
                                     horizontalTextAlignment: TextAlignment.CENTER,
                                     verticalTextAlignment: TextAlignment.CENTER
                                 }),
@@ -428,10 +419,11 @@ var collapseReset = () => {
     Cn.value++;
     darkMatter.value += DMFormula();
     currency.value = BigNumber.ZERO;
+    startTheory.level = 0;
     M.reset();
     EVal.reset();
     t.reset();
-    dt.reset();
+    t_r.reset();
     mi.reset();
     gamma.reset();
     theory.clearGraph();
