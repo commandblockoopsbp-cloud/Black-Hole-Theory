@@ -86,6 +86,7 @@ var EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")),
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
     M = new Stat(BigNumber.TEN.pow(12), Symbol.create("M", "\\mathcal{M}")), 
     Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"))
+    sumDM = BigNumber.ZERO;
 
 //dynamicLabel
 var dynamicLabel1;
@@ -220,7 +221,7 @@ var tick = (elapsedTime, multiplier) => {
 }
 
 //Equation
-var getInternalState = () => `${EVal.value} ${t.value} ${M.value} ${Cn.value}`
+var getInternalState = () => `${EVal.value} ${t.value} ${M.value} ${Cn.value} ${sumDM}`
 
 var setInternalState = (state) => {
     let values = state.split(" ");
@@ -228,6 +229,7 @@ var setInternalState = (state) => {
     if (values.length > 1) t.value = parseBigNumber(values[1]);
     if (values.length > 2) M.value = parseBigNumber(values[2]);
     if (values.length > 3) Cn.value = parseBigNumber(values[3]);
+    if (values.length > 4) sumD = parseBigNumber(values[4]);
 }
 
 var getPrimaryEquation = () => {
@@ -237,7 +239,7 @@ var getPrimaryEquation = () => {
     if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot"
     result += M.symbol.latex + "}{10^{11}} \\\\\\\\"
 
-    result += "\\dot{" + t.symbol.latex + "} = d" + t.symbol.latex + " \\cdot \\left(1+" + darkMatter.symbol + "\\right) \\\\\\\\";
+    result += "\\dot{" + t.symbol.latex + "} = d" + t.symbol.latex + " \\cdot \\left(1+ \\sum " + darkMatter.symbol + "\\right) \\\\\\\\";
 
     result += "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right) \\\\\\\\";
 
@@ -413,7 +415,9 @@ var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.valu
 //reset_layer
 var collapseReset = () => {
     Cn.value++;
-    darkMatter.value += DMFormula();
+    let AddDM = DMFormula();
+    sumDM += AddDM;
+    darkMatter.value += AddDM;
     currency.value = BigNumber.ZERO;
     M.reset();
     EVal.reset();
