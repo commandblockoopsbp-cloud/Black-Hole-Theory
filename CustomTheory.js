@@ -171,6 +171,17 @@ var updateAvailability = () => {
     omega.upgrade.isAvailable = Cn.value > 0;
 }
 
+var isCurrencyVisible = (index) => {
+    switch (index) {
+        case 0:
+            return true;
+        case 1:
+            return omega.upgrade.isAvailable;
+        default:
+            return false;
+    }
+}
+
 var tick = (elapsedTime, multiplier) => {
     //calculate
     let realTime = BigNumber.from(elapsedTime * multiplier);
