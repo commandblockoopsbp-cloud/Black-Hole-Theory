@@ -1,5 +1,4 @@
 import { ConstantCost, ExponentialCost, FirstFreeCost, FreeCost, LinearCost } from "./api/Costs";
-import { Localization } from "./api/Localization";
 import { BigNumber } from "./api/BigNumber";
 import { theory } from "./api/Theory";
 import { Utils } from "./api/Utils";
@@ -16,10 +15,6 @@ var DMFormula = () => {
 //getValue
 var getE = (amount) => {
     return amount * BigNumber.TEN.pow(22);
-}
-
-var getk = () => {
-    return BigNumber.TEN.pow(-1);
 }
 
 var getSchRadius = () => {
@@ -174,7 +169,10 @@ var currency, darkMatter;
 
 //upgrade
 var E1, startTheory, mi, gamma,
-    omega;
+    omega, lambda;
+
+//permanent
+var testMode;
 
 //constant
 const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
@@ -207,8 +205,17 @@ const P1 = new Formula(
         () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ", " + mi.symbol.latex + " \\cdot P_{\\text{abs}}\\right)"
     ),
     dM = new Formula(
-        (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2)),
-        () => "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
+        (time) => {
+            let newK = K.value;
+            if (lambda.upgrade.isAvailable) newK *= BigNumber.from(0.97).pow(lambda.value);
+            return (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * newK / (BigNumber.ONE + M.value.pow(2));
+        },
+        () => {
+            let result = "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{";
+            if (lambda.upgrade.isAvailable) result += "0.97^{" + lambda.symbol.latex + "} \\cdot"
+            result += K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
+            return result;
+        }
     ),
     dt = new Formula(
         () => (BigNumber.ONE + getEpsilon().value).sqrt(),
@@ -253,7 +260,7 @@ var init = () => {
             EVal.value += amount * getE(1);
         };
         E1.getDescription = (_) => Utils.getMath(EVal.symbol.latex + " \\uparrow " + getE(1));
-        E1.getInfo = (amount) => Utils.getMath(EVal.symbol.latex + "\\text{ increase by }" + getE(1));
+        E1.getInfo = (_) => Utils.getMath(EVal.symbol.latex + "\\text{ increase by }" + getE(1));
     }
 
     // mi
@@ -261,7 +268,7 @@ var init = () => {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
             new Symbol("mi", "\\mu"), 
-            (level) => (BigNumber.TEN.pow(-1) + level * BigNumber.TEN.pow(-2))
+            (level) => (BigNumber.TEN.pow(-1) + level * BigNumber.from(0.025))
         );
     }
 
@@ -278,6 +285,14 @@ var init = () => {
     /////////////////////
     // Permanent Upgrades
     theory.createPublicationUpgrade(0, currency, 1e10);
+    {
+        testMode = new Upgrade(
+            theory.createPermanentUpgrade(1, currency, new FreeCost()), 
+            new Symbol("TimeScale", "TimeScale"), 
+            (level) => BigNumber.from(level)
+        );
+        testMode.upgrade.maxLevel = 4;
+    }
 
     ///////////////////////
     //// Milestone Upgrades
@@ -299,6 +314,15 @@ var init = () => {
         );
     }
 
+    //lambda
+    {
+        lambda = new Upgrade(
+            theory.createUpgrade(4, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
+            new Symbol("λ", "\\lambda"),
+            (level) => BigNumber.from(level)
+        );
+    }
+
     /////////////////////
     // Permanent Upgrades
 
@@ -311,6 +335,7 @@ var init = () => {
 
 var updateAvailability = () => {
     omega.upgrade.isAvailable = Cn.value > 0;
+    lambda.upgrade.isAvailable = Cn.value > 0;
 }
 
 var isCurrencyVisible = (index) => {
@@ -326,7 +351,7 @@ var isCurrencyVisible = (index) => {
 
 var tick = (elapsedTime, multiplier) => {
     //calculate
-    let realTime = BigNumber.from(elapsedTime * multiplier);
+    let realTime = BigNumber.from(elapsedTime * multiplier) * testMode.value;
     if (M.value == 0) {
         realTime = 0;
     }
@@ -407,7 +432,7 @@ var getQuaternaryEntries = () => {
 
 var getTertiaryEquation = () => {
     let result = "";
-    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
+    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value * BigNumber.from(0.97).pow(lambda.value));
     result += "T_{evap} = " + numberFormat(tEvap / dt.calculate(), 2);
     result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return result;
