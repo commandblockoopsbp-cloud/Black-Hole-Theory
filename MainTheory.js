@@ -235,7 +235,7 @@ const P1 = new Formula(
         () => "d" + t.symbol.latex + " = \\sqrt{1 + " + getEpsilon().symbol.latex + "}"
     ),
     rho = new Formula(
-        (realTime) => realTime * M.value * BigNumber.TEN / M._default,
+        (realTime) => realTime * (BigNumber.ONE + Cn.value) * M.value * BigNumber.TEN / M._default,
         () => "\\dot{" + currency.symbol + "} = \\frac{\\left(1 + " + Cn.symbol.latex + " \\right)" + M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
     );
 
@@ -387,7 +387,7 @@ var tick = (elapsedTime, multiplier) => {
 
     //dynamicLabel
     if (dynamicLabel1) {
-        dynamicLabel1.text = Utils.getMath("\\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol + "\\\\ \\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > 1, "s") + "}")
+        dynamicLabel1.text = Utils.getMath("\\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > 1, "s") + "} \\\\ \\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol) + " \\\\\\\\";
     }
 
     theory.invalidateQuaternaryValues();
