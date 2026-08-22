@@ -191,24 +191,24 @@ const EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")),
 
 //formula
 const P1 = new Formula(
-        () => getk() * M.value.pow(2) * (EVal.value + BigNumber.ONE).log10(),
-        () => "P_1 = " + numberFormat(getk(), 1) + " \\cdot " + M.symbol.latex + "^2 \\cdot log_{10}\\left(1 + " + EVal.symbol.latex + "\\right)"
+        () => BigNumber.from(12.642) * M.value.pow(2) * (EVal.value + BigNumber.ONE).log10() / M._default,
+        () => "P_1 = \\frac{12.642 \\cdot " + M.symbol.latex + "^{2} \\cdot log_{10}\\left(1 + " + EVal.symbol.latex + "\\right)}{" + numberFormat(M._default, 2) + "}"
     ),
     P2 = new Formula(
         () => BigNumber.from(6.321) * M.value,
-        () => "P_2 = 6.321 " + M.symbol.latex
+        () => "P_2 = 6.321 \\cdot " + M.symbol.latex
     ),
     Pabs = new Formula(
         () => P1.calculate().min(P2.calculate()),
         () => "P_{\\text{abs}} = \\min\\left(P_1, P_2\\right)"
     ),
     dE = new Formula(
-        (time) => EVal.value.min(Pabs.calculate() * time),
-        () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ",P_{abs}\\right)"
+        (time) => EVal.value.min(mi.value * Pabs.calculate() * time),
+        () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ", " + mi.symbol.latex + " \\cdot P_{\\text{abs}}\\right)"
     ),
     dM = new Formula(
-        (time) => mi.value * (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2)),
-        () => "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{" + mi.symbol.latex + " (1 - " + gamma.symbol.latex + ")}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
+        (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2)),
+        () => "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
     ),
     dt = new Formula(
         () => (BigNumber.ONE + getEpsilon().value).sqrt(),
@@ -216,14 +216,14 @@ const P1 = new Formula(
     ),
     rho = new Formula(
         (realTime) => {
-            let addCurrency = realTime * M.value / BigNumber.TEN.pow(9);
+            let addCurrency = realTime * M.value * BigNumber.TEN / M._default;
             if (omega.upgrade.isAvailable) addCurrency *= omega.value.pow(1.25);
             return addCurrency;
         },
         () => {
             let result = "\\dot{" + currency.symbol + "} = \\frac{";
             if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot";
-            result += M.symbol.latex + "}{10^{9}}"
+            result += M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
             return result;
         }
     );
