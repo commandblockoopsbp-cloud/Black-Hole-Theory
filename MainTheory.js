@@ -289,9 +289,9 @@ var init = () => {
         testMode = new Upgrade(
             theory.createPermanentUpgrade(1, currency, new FreeCost()), 
             new Symbol("TimeScale", "TimeScale"), 
-            (level) => BigNumber.from(level)
+            (level) => level + BigNumber.ONE
         );
-        testMode.upgrade.maxLevel = 4;
+        testMode.upgrade.maxLevel = 2;
     }
 
     ///////////////////////
