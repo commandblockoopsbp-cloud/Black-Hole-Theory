@@ -86,7 +86,7 @@ var addEndIf = (string, bool, endString) => {
 
 //reset_layer
 var collapseReset = () => {
-    Cn.value++;
+    Cn.value+=BigNumber.ONE;
     darkMatter.value += DMFormula();
     currency.value = BigNumber.ZERO;
     startTheory.level = 0;
