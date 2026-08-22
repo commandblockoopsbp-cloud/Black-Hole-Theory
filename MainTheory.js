@@ -17,6 +17,10 @@ var getE = (amount) => {
     return amount * BigNumber.TEN.pow(22);
 }
 
+var getBaseLambda = () => {
+    return BigNumber.from(0.91);
+}
+
 var getSchRadius = () => {
     return BigNumber.TWO * G.value * M.value / c.value.pow(2);
 }
@@ -172,7 +176,7 @@ var E1, startTheory, mi, gamma,
     omega, lambda;
 
 //permanent
-var testMode;
+var testMode, testRefund;
 
 //constant
 const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
@@ -207,12 +211,12 @@ const P1 = new Formula(
     dM = new Formula(
         (time) => {
             let newK = K.value;
-            if (lambda.upgrade.isAvailable) newK *= BigNumber.from(0.97).pow(lambda.value);
+            if (lambda.upgrade.isAvailable) newK *= getBaseLambda().pow(lambda.value);
             return (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * newK / (BigNumber.ONE + M.value.pow(2));
         },
         () => {
             let result = "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{";
-            if (lambda.upgrade.isAvailable) result += "0.97^{" + lambda.symbol.latex + "} \\cdot"
+            if (lambda.upgrade.isAvailable) result += getBaseLambda() + "^{" + lambda.symbol.latex + "} \\cdot"
             result += K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
             return result;
         }
@@ -224,12 +228,12 @@ const P1 = new Formula(
     rho = new Formula(
         (realTime) => {
             let addCurrency = realTime * M.value * BigNumber.TEN / M._default;
-            if (omega.upgrade.isAvailable) addCurrency *= omega.value.pow(1.25);
+            if (omega.upgrade.isAvailable) addCurrency *= omega.value;
             return addCurrency;
         },
         () => {
             let result = "\\dot{" + currency.symbol + "} = \\frac{";
-            if (omega.upgrade.isAvailable) result += omega.symbol.latex + "^{1.25} \\cdot";
+            if (omega.upgrade.isAvailable) result += omega.symbol.latex + " \\cdot";
             result += M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
             return result;
         }
@@ -249,7 +253,7 @@ var init = () => {
     {   
         startTheory = theory.createUpgrade(0, currency, new FreeCost());
         startTheory.getDescription = (_) => "Initialize Singularity";
-        startTheory.getInfo = (amount) => "Begin the black hole accretion cycle.";
+        startTheory.getInfo = (_) => "Begin the black hole accretion cycle.";
         startTheory.maxLevel = 1;
     }
 
@@ -267,7 +271,7 @@ var init = () => {
     {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
-            new Symbol("mi", "\\mu"), 
+            new Symbol("µ", "\\mu"), 
             (level) => (BigNumber.TEN.pow(-1) + level * BigNumber.from(0.025))
         );
     }
@@ -275,8 +279,8 @@ var init = () => {
     // gamma
     {
         gamma = new Upgrade(
-            theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(2).log2())), 
-            new Symbol("gamma", "\\gamma"), 
+            theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(1).log2())), 
+            new Symbol("γ", "\\gamma"), 
             (level) => (BigNumber.from(0.9) - level / BigNumber.from(20)).max(BigNumber.from(0.1))
         );
         gamma.upgrade.maxLevel = 16;
@@ -284,14 +288,23 @@ var init = () => {
 
     /////////////////////
     // Permanent Upgrades
-    theory.createPublicationUpgrade(0, currency, 1e10);
     {
         testMode = new Upgrade(
-            theory.createPermanentUpgrade(1, currency, new FreeCost()), 
+            theory.createPermanentUpgrade(0, currency, new FreeCost()), 
             new Symbol("TimeScale", "TimeScale"), 
             (level) => level + BigNumber.ONE
         );
         testMode.upgrade.maxLevel = 2;
+    }
+    {
+        testRefund = new Upgrade(
+            theory.createPermanentUpgrade(1, currency, new FreeCost()), 
+            new Symbol("Refund", "Refund"), 
+            (level) => BigNumber.ZERO
+        );
+        testRefund.upgrade.bought = (_) => {
+            if (testMode.upgrade.level > 0) testMode.upgrade.level -= 1;
+        }
     }
 
     ///////////////////////
@@ -309,8 +322,8 @@ var init = () => {
     {
         omega = new Upgrade(
             theory.createUpgrade(3, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
-            new Symbol("omega", "\\omega"), 
-            (level) => (BigNumber.ONE + BigNumber.from(0.15) * level)
+            new Symbol("ω", "\\omega"),
+            (level) => BigNumber.TWO.pow(level)
         );
     }
 
@@ -432,7 +445,7 @@ var getQuaternaryEntries = () => {
 
 var getTertiaryEquation = () => {
     let result = "";
-    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value * BigNumber.from(0.97).pow(lambda.value));
+    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value * getBaseLambda().pow(lambda.value));
     result += "T_{evap} = " + numberFormat(tEvap / dt.calculate(), 2);
     result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return result;
