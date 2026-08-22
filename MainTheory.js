@@ -78,6 +78,11 @@ var numberFormat = (value, decimals, negExpFlag=false) => {
 
 var enter = (latex) => latex + " \\\\\\\\ ";
 
+var addEndIf = (string, bool, endString) => {
+    if (bool) string += endString;
+    return string;
+}
+
 
 //reset_layer
 var collapseReset = () => {
@@ -382,7 +387,7 @@ var tick = (elapsedTime, multiplier) => {
 
     //dynamicLabel
     if (dynamicLabel1) {
-        dynamicLabel1.text = Utils.getMath("\\text{You will earn }" + numberFormat(DMFormula(), 3) + "\\text{ Dark Matter\\\\}")
+        dynamicLabel1.text = Utils.getMath("\\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol + "\\\\ \\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > 1, "s") + "}")
     }
 
     theory.invalidateQuaternaryValues();
