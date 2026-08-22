@@ -387,7 +387,7 @@ var tick = (elapsedTime, multiplier) => {
 
     //dynamicLabel
     if (dynamicLabel1) {
-        dynamicLabel1.text = Utils.getMath("\\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > 1, "s") + "} \\\\ \\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol) + " \\\\\\\\";
+        dynamicLabel1.text = Utils.getMath("\\begin{matrix} \\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > 1, "s") + " } \\left(" + Cn.symbol.latex + " = " + Cn.value + "\\right) \\\\\\\\ \\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol + " \\end{matrix} \\\\");
     }
 
     theory.invalidateQuaternaryValues();
@@ -559,7 +559,7 @@ var getEquationOverlay = () => {
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("\\text{Reset your {" + currency.symbol + "}, {" + M.symbol.latex + "}, {" + EVal.symbol.latex + "}, {" + t.symbol.latex + "}, {" + t_r.symbol.latex + "}\\\\ and {" + mi.symbol.latex + "}, {" + gamma.symbol.latex + "} upgrade\\\\}"),
+                                    text: Utils.getMath("\\begin{matrix} \\text{Reset your } " + currency.symbol + ", " + M.symbol.latex + ", " + EVal.symbol.latex + ", " + t.symbol.latex + ", " + t_r.symbol.latex + " \\\\ \\text{and } " + mi.symbol.latex + ", " + gamma.symbol.latex + " \\text{ upgrades} \\end{matrix} \\\\"),
                                     horizontalTextAlignment: TextAlignment.CENTER,
                                     verticalTextAlignment: TextAlignment.CENTER
                                 }),
