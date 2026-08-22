@@ -8,7 +8,7 @@ import { Color } from "./api/ui/properties/Color";
 
 //formula
 var DMFormula = () => {
-    return t_r.value / BigNumber.from(90);
+    return (t_r.value / BigNumber.from(90)).pow(3) * (BigNumber.ONE + darkIncre.value);
 }
 
 
@@ -18,7 +18,7 @@ var getE = (amount) => {
 }
 
 var getBaseLambda = () => {
-    return BigNumber.from(0.91);
+    return BigNumber.from(0.97);
 }
 
 var getSchRadius = () => {
@@ -106,7 +106,9 @@ class Symbol {
         this.latex = latex;
     }
 
-    static create(normal, latex) {
+    static create(normal = null, latex = null) {
+        if (normal == null) normal = "";
+        if (latex == null) latex = normal;
         return new Symbol(normal, latex);
     }
 }
@@ -131,17 +133,19 @@ class Constant {
 }
 
 class Upgrade {
-    constructor(upgrade, symbol, getValue, getDesc = null) {
+    constructor(upgrade, symbol, getValue, getDesc = null, getInfo = null) {
         this.upgrade = upgrade;
         this.symbol = symbol;
         this._getValue = getValue;
         if (getValue) {
-            if (getDesc == null) getDesc = (level) => `${symbol.latex} = ${getValue(level).toString()}`;
-            this.upgrade.getDescription = (_) => Utils.getMath(getDesc(this.upgrade.level));
-            this.upgrade.getInfo = (amount) => Utils.getMathTo(
-                getDesc(this.upgrade.level), 
-                getDesc(this.upgrade.level + amount)
+            var subDesc = (level) => `${symbol.latex} = ${getValue(level).toString()}`;
+            if (getDesc == null) getDesc = (level) => Utils.getMath(subDesc(level));
+            if (getInfo == null) getInfo = (amount) => Utils.getMathTo(
+                subDesc(this.upgrade.level), 
+                subDesc(this.upgrade.level + amount)
             );
+            this.upgrade.getDescription = (_) => getDesc(this.upgrade.level);
+            this.upgrade.getInfo = (amount) => getInfo(amount);
         }
     }
 
@@ -173,7 +177,7 @@ var currency, darkMatter;
 
 //upgrade
 var E1, startTheory, mi, gamma,
-    omega, lambda;
+    darkIncre, lambda;
 
 //permanent
 var testMode, testRefund;
@@ -205,7 +209,7 @@ const P1 = new Formula(
         () => "P_{\\text{abs}} = \\min\\left(P_1, P_2\\right)"
     ),
     dE = new Formula(
-        (time) => EVal.value.min(mi.value * Pabs.calculate() * time),
+        (time) => -EVal.value.min(mi.value * Pabs.calculate() * time),
         () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ", " + mi.symbol.latex + " \\cdot P_{\\text{abs}}\\right)"
     ),
     dM = new Formula(
@@ -226,17 +230,8 @@ const P1 = new Formula(
         () => "d" + t.symbol.latex + " = \\sqrt{1 + " + getEpsilon().symbol.latex + "}"
     ),
     rho = new Formula(
-        (realTime) => {
-            let addCurrency = realTime * M.value * BigNumber.TEN / M._default;
-            if (omega.upgrade.isAvailable) addCurrency *= omega.value;
-            return addCurrency;
-        },
-        () => {
-            let result = "\\dot{" + currency.symbol + "} = \\frac{";
-            if (omega.upgrade.isAvailable) result += omega.symbol.latex + " \\cdot";
-            result += M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
-            return result;
-        }
+        (realTime) => realTime * M.value * BigNumber.TEN / M._default,
+        () => "\\dot{" + currency.symbol + "} = \\frac{\\left(1 + " + Cn.symbol.latex + " \\right)" + M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
     );
 
 
@@ -271,7 +266,7 @@ var init = () => {
     {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
-            new Symbol("µ", "\\mu"), 
+            Symbol.create("µ", "\\mu"), 
             (level) => (BigNumber.TEN.pow(-1) + level * BigNumber.from(0.025))
         );
     }
@@ -280,7 +275,7 @@ var init = () => {
     {
         gamma = new Upgrade(
             theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(1).log2())), 
-            new Symbol("γ", "\\gamma"), 
+            Symbol.create("γ", "\\gamma"), 
             (level) => (BigNumber.from(0.9) - level / BigNumber.from(20)).max(BigNumber.from(0.1))
         );
         gamma.upgrade.maxLevel = 16;
@@ -291,15 +286,15 @@ var init = () => {
     {
         testMode = new Upgrade(
             theory.createPermanentUpgrade(0, currency, new FreeCost()), 
-            new Symbol("TimeScale", "TimeScale"), 
+            Symbol.create("TimeScale"), 
             (level) => level + BigNumber.ONE
         );
-        testMode.upgrade.maxLevel = 2;
+        testMode.upgrade.maxLevel = 9;
     }
     {
         testRefund = new Upgrade(
             theory.createPermanentUpgrade(1, currency, new FreeCost()), 
-            new Symbol("Refund", "Refund"), 
+            Symbol.create("Refund"), 
             (level) => BigNumber.ZERO
         );
         testRefund.upgrade.bought = (_) => {
@@ -318,12 +313,14 @@ var init = () => {
     ///////////////////
     // Regular Upgrades
 
-    //omega
+    //darkIncre
     {
-        omega = new Upgrade(
+        darkIncre = new Upgrade(
             theory.createUpgrade(3, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
-            new Symbol("ω", "\\omega"),
-            (level) => BigNumber.TWO.pow(level)
+            Symbol.create(),
+            (level) => BigNumber.from(0.15) * level,
+            (_) => Utils.getMath(`+15 \\% \\operatorname{to} ${darkMatter.symbol}`),
+            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre._getValue(darkIncre.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
     }
 
@@ -331,7 +328,7 @@ var init = () => {
     {
         lambda = new Upgrade(
             theory.createUpgrade(4, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
-            new Symbol("λ", "\\lambda"),
+            Symbol.create("λ", "\\lambda"),
             (level) => BigNumber.from(level)
         );
     }
@@ -347,7 +344,7 @@ var init = () => {
 }
 
 var updateAvailability = () => {
-    omega.upgrade.isAvailable = Cn.value > 0;
+    darkIncre.upgrade.isAvailable = Cn.value > 0;
     lambda.upgrade.isAvailable = Cn.value > 0;
 }
 
@@ -356,7 +353,7 @@ var isCurrencyVisible = (index) => {
         case 0:
             return true;
         case 1:
-            return omega.upgrade.isAvailable;
+            return Cn.value > 0;
         default:
             return false;
     }
@@ -375,7 +372,7 @@ var tick = (elapsedTime, multiplier) => {
         M.value += dM.calculate(time);
         M.value = M.value.max(BigNumber.ZERO);
 
-        EVal.value += -dE.calculate(time);
+        EVal.value += dE.calculate(time);
 
         t.value += time;
         t_r.value += realTime;
