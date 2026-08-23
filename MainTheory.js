@@ -14,19 +14,20 @@ var DMFormula = () => {
 
 //getValue
 var getE = (amount) => {
-    return amount * BigNumber.TEN.pow(22);
+    return amount * BigNumber.TEN.pow(24);
 }
 
 var getBaseLambda = () => {
     return BigNumber.from(0.97);
 }
 
+
 var getSchRadius = () => {
     return BigNumber.TWO * G.value * M.value / c.value.pow(2);
 }
 
 var getRadiusDiff = () => {
-    return BigNumber.from(1.49) * BigNumber.TEN.pow(-41);
+    return BigNumber.from(1.49) * BigNumber.TEN.pow(-43);
 }
 
 var getEpsilon = () => {
@@ -186,6 +187,7 @@ var E1, startTheory, mi, gamma,
 
 //permanent
 var testMode, testRefund;
+var tDifla;
 
 //constant
 const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
@@ -197,7 +199,7 @@ const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.cr
 const EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")), 
     t_r = new Stat(BigNumber.ZERO, Symbol.create("t", "t_r")), 
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
-    M = new Stat(BigNumber.TEN.pow(10), Symbol.create("M", "\\mathcal{M}")), 
+    M = new Stat(BigNumber.PI * BigNumber.TEN.pow(10), Symbol.create("M", "\\mathcal{M}")), 
     Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"));
 
 //formula
@@ -231,8 +233,16 @@ const P1 = new Formula(
         }
     ),
     dt = new Formula(
-        () => (BigNumber.ONE + getEpsilon().value).sqrt(),
-        () => "d" + t.symbol.latex + " = \\sqrt{1 + " + getEpsilon().symbol.latex + "}"
+        () => {
+            if (tDifla.upgrade.isAvailable) return (BigNumber.ONE + getEpsilon().value).sqrt();
+            return M._default * BigNumber.TEN.pow(3);
+        },
+        () => {
+            let result = "d" + t.symbol.latex + " = ";
+            if (tDifla.upgrade.isAvailable) result += "\\sqrt{1 + " + getEpsilon().symbol.latex + "}";
+            result += dt.calculate();
+            return result;
+        }
     ),
     rho = new Formula(
         (realTime) => realTime * (BigNumber.ONE + Cn.value) * M.value * BigNumber.TEN / M._default,
@@ -272,7 +282,7 @@ var init = () => {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
             Symbol.create("µ", "\\mu"), 
-            (level) => (BigNumber.TEN.pow(-1) + level * BigNumber.from(0.025))
+            (level) => (BigNumber.ONE + level * BigNumber.from(0.01))
         );
     }
 
@@ -340,6 +350,17 @@ var init = () => {
 
     /////////////////////
     // Permanent Upgrades
+    let base = 100;
+    {
+        tDifla = new Upgrade(
+            theory.createPermanentUpgrade(0 + base, darkMatter, new ConstantCost(BigNumber.from(25))), 
+            Symbol.create(), 
+            (_) => BigNumber.ZERO,
+            (_) => "Buy this unlock this",
+            (_) => "Open time diflation"
+        );
+        tDifla.upgrade.maxLevel = 1;
+    }
 
     ///////////////////////
     //// Milestone Upgrades
@@ -351,6 +372,7 @@ var init = () => {
 var updateAvailability = () => {
     darkIncre.upgrade.isAvailable = Cn.value > 0;
     lambda.upgrade.isAvailable = Cn.value > 0;
+    tDifla.upgrade.isAvailable = Cn.value > 10;
 }
 
 var isCurrencyVisible = (index) => {
@@ -427,21 +449,28 @@ var getPrimaryEquation = () => {
 var getQuaternaryEntries = () => {
     let quaternaryEntries = [];
     let flagAll = quaternaryEntries.length == 0;
-    let Epsi = getEpsilon();
+    let Epsi;
+    let add = 0;
     if (flagAll) {
         quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry("r_s", null));
-        quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, null));
+        if (tDifla.upgrade.isAvailable) {
+            Epsi = getEpsilon();
+            quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, null));
+            add++;
+        }
         quaternaryEntries.push(new QuaternaryEntry(t.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry(t_r.symbol.latex, null));
     }
     quaternaryEntries[0].value = numberFormat(EVal.value, 2);
     quaternaryEntries[1].value = numberFormat(M.value, 2);
     quaternaryEntries[2].value = numberFormat(getSchRadius(), 2);
-    quaternaryEntries[3].value = numberFormat(Epsi.value, 2);
-    quaternaryEntries[4].value = numberFormat(t.value, 2);
-    quaternaryEntries[5].value = numberFormat(t_r.value, 2);
+    if (tDifla.upgrade.isAvailable) {
+        quaternaryEntries[3].value = numberFormat(Epsi.value, 2);
+    }
+    quaternaryEntries[3 + add].value = numberFormat(t.value, 2);
+    quaternaryEntries[4 + add].value = numberFormat(t_r.value, 2);
     return quaternaryEntries;
 }
 
@@ -449,7 +478,7 @@ var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value * getBaseLambda().pow(lambda.value));
     result += "T_{evap} = " + numberFormat(tEvap / dt.calculate(), 2);
-    result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
+    if (tDifla.upgrade.isAvailable) result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return result;
 }
 
@@ -457,7 +486,7 @@ var getSecondaryEquation = () => {
     let result = "";
     let Epsi = getEpsilon();
     result += theory.latexSymbol + "=\\max\\rho";
-    result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
+    if (tDifla.upgrade.isAvailable) result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
     return result;
 }
 
