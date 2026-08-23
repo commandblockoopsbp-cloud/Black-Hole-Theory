@@ -282,7 +282,7 @@ var init = () => {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
             Symbol.create("µ", "\\mu"), 
-            (level) => (BigNumber.TEN + level * BigNumber.from(0.01))
+            (level) => (BigNumber.FIVE + level * BigNumber.from(0.01))
         );
     }
 
