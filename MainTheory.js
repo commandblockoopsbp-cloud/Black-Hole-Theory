@@ -160,9 +160,18 @@ class Upgrade {
 }
 
 class Formula {
-    constructor(calculate, latex) {
+    constructor(calculate, symbol, latex) {
         this.calculate = calculate;
-        this.latex = latex;
+        this._symbol = symbol;
+        this._latex = latex;
+    }
+
+    latex() {
+        return this.symbol.latex + " = " + this._latex();
+    }
+
+    get symbol() {
+        return this._symbol()
     }
 }
 
@@ -200,39 +209,53 @@ const EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")),
 //formula
 const P1 = new Formula(
         () => BigNumber.from(12.642) * M.value.pow(2) * (EVal.value + BigNumber.ONE).log10() / M._default,
-        () => "P_1 = \\frac{12.642 \\cdot " + M.symbol.latex + "^{2} \\cdot log_{10}\\left(1 + " + EVal.symbol.latex + "\\right)}{" + numberFormat(M._default, 2) + "}"
+        () => Symbol.create("\\Phi_{\\text{acc}}"),
+        () => "\\frac{12.642 \\cdot " + M.symbol.latex + "^{2} \\cdot log_{10}\\left(1 + " + EVal.symbol.latex + "\\right)}{" + numberFormat(M._default, 2) + "}"
     ),
     P2 = new Formula(
         () => BigNumber.from(6.321) * M.value,
-        () => "P_2 = 6.321 \\cdot " + M.symbol.latex
+        () => Symbol.create("\\Phi_{\\text{eh}}"),
+        () => "6.321 \\cdot " + M.symbol.latex
+    ),
+    P3 = new Formula(
+        () => K.value / (BigNumber.ONE + M.value.pow(2)),
+        () => Symbol.create("\\Phi_{\\text{rad}}"),
+        () => "\\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
     ),
     Pabs = new Formula(
         () => P1.calculate().min(P2.calculate()),
-        () => "P_{\\text{abs}} = \\min\\left(P_1, P_2\\right)"
+        () => Symbol.create("\\Phi_{\\text{core}}"),
+        () => "\\inf \\langle " + P1.symbol.latex + ", " + P2.symbol.latex + " \\rangle"
     ),
     dE = new Formula(
-        (time) => -EVal.value.min((mi.value + BigNumber.TEN) * Pabs.calculate() * time),
-        () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ", " + mi.symbol.latex + " \\cdot P_{\\text{abs}}\\right)"
+        (time) => {
+            let first = P3.calculate() * c.value.pow(2);
+            let second = time * first.min(mi.value * Pabs.calculate());
+            return -second.min(EVal.value);
+        },
+        () => Symbol.create("\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "}"),
+        () => "-\\inf \\langle " + P3.symbol.latex + ", " + mi.symbol.latex + " \\cdot " + Pabs.symbol.latex + " \\rangle"
     ),
     dM = new Formula(
-        (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2)),
-        () => "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
+        (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * P3.calculate(),
+        () => Symbol.create("\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "}"),
+        () => "-\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - " + P3.symbol.latex
     ),
     dt = new Formula(
         () => {
-            if (tDifla.upgrade.isAvailable) return (BigNumber.ONE + getEpsilon().value).sqrt();
+            if (tDifla.upgrade.level > 0) return (BigNumber.ONE + getEpsilon().value).sqrt();
             return M._default * BigNumber.TEN.pow(3);
         },
+        () => Symbol.create("d" + t.symbol.latex),
         () => {
-            let result = "d" + t.symbol.latex + " = ";
-            if (tDifla.upgrade.isAvailable) result += "\\sqrt{1 + " + getEpsilon().symbol.latex + "}";
-            result += dt.calculate();
-            return result;
+            if (tDifla.upgrade.level > 0) return "\\sqrt{1 + " + getEpsilon().symbol.latex + "}";
+            return dt.calculate();
         }
     ),
     rho = new Formula(
         (realTime) => realTime * (BigNumber.ONE + lambda.value * Cn.value) * M.value * BigNumber.TEN / M._default,
-        () => "\\dot{" + currency.symbol + "} = \\frac{\\left(1 + " + lambda.symbol.latex + " \\cdot " + Cn.symbol.latex + " \\right) \\cdot " + M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
+        () => Symbol.create("\\dot{" + currency.symbol + "}"),
+        () => "\\frac{\\left(1 + " + lambda.symbol.latex + " \\cdot " + Cn.symbol.latex + " \\right) \\cdot " + M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
     );
 
 
@@ -441,7 +464,7 @@ var getQuaternaryEntries = () => {
         quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, null));
         quaternaryEntries.push(new QuaternaryEntry("r_s", null));
-        if (tDifla.upgrade.isAvailable) {
+        if (tDifla.upgrade.level > 0) {
             Epsi = getEpsilon();
             quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, null));
             add++;
@@ -452,7 +475,7 @@ var getQuaternaryEntries = () => {
     quaternaryEntries[0].value = numberFormat(EVal.value, 2);
     quaternaryEntries[1].value = numberFormat(M.value, 2);
     quaternaryEntries[2].value = numberFormat(getSchRadius(), 2);
-    if (tDifla.upgrade.isAvailable) {
+    if (tDifla.upgrade.level > 0) {
         quaternaryEntries[3].value = numberFormat(Epsi.value, 2);
     }
     quaternaryEntries[3 + add].value = numberFormat(t.value, 2);
@@ -504,6 +527,10 @@ var getEquationOverlay = () => {
                                 }),
                                 ui.createLatexLabel({
                                     text: Utils.getMath(P2.latex()),
+                                    horizontalTextAlignment: TextAlignment.CENTER
+                                }),
+                                ui.createLatexLabel({
+                                    text: Utils.getMath(P3.latex()),
                                     horizontalTextAlignment: TextAlignment.CENTER
                                 }),
                                 ui.createLatexLabel({
@@ -607,7 +634,7 @@ var getEquationOverlay = () => {
 var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
 var getPublicationMultiplierFormula = (symbol) => "\\frac{{" + symbol + "}^{0.164}}{3}";
 var getTau = () => currency.value;
-var get2DGraphValue = () => EVal.value.sign * (BigNumber.ONE + EVal.value).log10().toNumber();
+var get2DGraphValue = () => M.value.sign * (BigNumber.ONE + M.value).log10().toNumber();
 
 
 init();
