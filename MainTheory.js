@@ -330,7 +330,7 @@ var init = () => {
         lambda = new Upgrade(
             theory.createUpgrade(4, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
             Symbol.create("λ", "\\lambda"),
-            (level) => (1 + level) * BigNumber.from(0.1)
+            (level) => (1 + level) * BigNumber.from(0.25)
         );
     }
 
