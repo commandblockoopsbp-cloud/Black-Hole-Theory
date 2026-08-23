@@ -277,7 +277,7 @@ var init = () => {
         gamma = new Upgrade(
             theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(1).log2())), 
             Symbol.create("γ", "\\gamma"), 
-            (level) => (BigNumber.from(0.9) - level / BigNumber.from(20)).max(BigNumber.from(0.1))
+            (level) => (BigNumber.from(0.9) - level * BigNumber.from(0.025)).max(BigNumber.from(0.1))
         );
         gamma.upgrade.maxLevel = 16;
     }
