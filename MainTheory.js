@@ -634,7 +634,7 @@ var getEquationOverlay = () => {
 var getPublicationMultiplier = (tau) => tau.pow(0.164) / BigNumber.THREE;
 var getPublicationMultiplierFormula = (symbol) => "\\frac{{" + symbol + "}^{0.164}}{3}";
 var getTau = () => currency.value;
-var get2DGraphValue = () => M.value.sign * (BigNumber.ONE + M.value).log10().toNumber();
+var get2DGraphValue = () => EVal.value.sign * (BigNumber.ONE + EVal.value).log10().toNumber();
 
 
 init();
