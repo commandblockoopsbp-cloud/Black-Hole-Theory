@@ -17,11 +17,6 @@ var getE = (amount) => {
     return amount * BigNumber.TEN.pow(25);
 }
 
-var getBaseLambda = () => {
-    return BigNumber.from(0.97);
-}
-
-
 var getSchRadius = () => {
     return BigNumber.TWO * G.value * M.value / c.value.pow(2);
 }
@@ -220,17 +215,8 @@ const P1 = new Formula(
         () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ", " + mi.symbol.latex + " \\cdot P_{\\text{abs}}\\right)"
     ),
     dM = new Formula(
-        (time) => {
-            let newK = K.value;
-            if (lambda.upgrade.isAvailable) newK *= getBaseLambda().pow(lambda.value);
-            return (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * newK / (BigNumber.ONE + M.value.pow(2));
-        },
-        () => {
-            let result = "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{";
-            if (lambda.upgrade.isAvailable) result += getBaseLambda() + "^{" + lambda.symbol.latex + "} \\cdot"
-            result += K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}";
-            return result;
-        }
+        (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * K.value / (BigNumber.ONE + M.value.pow(2)),
+        () => "\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "} = -\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - \\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
     ),
     dt = new Formula(
         () => {
@@ -245,8 +231,8 @@ const P1 = new Formula(
         }
     ),
     rho = new Formula(
-        (realTime) => realTime * (BigNumber.ONE + Cn.value) * M.value * BigNumber.TEN / M._default,
-        () => "\\dot{" + currency.symbol + "} = \\frac{\\left(1 + " + Cn.symbol.latex + " \\right) \\cdot " + M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
+        (realTime) => realTime * (BigNumber.ONE + lambda.value * Cn.value) * M.value * BigNumber.TEN / M._default,
+        () => "\\dot{" + currency.symbol + "} = \\frac{\\left(1 + " + lambda.symbol.latex + " \\cdot " + Cn.symbol.latex + " \\right) \\cdot " + M.symbol.latex + "}{" + numberFormat(M._default / BigNumber.TEN, 2) + "}"
     );
 
 
@@ -344,7 +330,7 @@ var init = () => {
         lambda = new Upgrade(
             theory.createUpgrade(4, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
             Symbol.create("λ", "\\lambda"),
-            (level) => BigNumber.from(level)
+            (level) => BigNumber.ONE + level / BigNumber.FOUR
         );
     }
 
@@ -476,7 +462,7 @@ var getQuaternaryEntries = () => {
 
 var getTertiaryEquation = () => {
     let result = "";
-    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value * getBaseLambda().pow(lambda.value));
+    let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
     result += "T_{evap} = " + numberFormat(tEvap / dt.calculate(), 2);
     if (tDifla.upgrade.isAvailable) result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return result;
