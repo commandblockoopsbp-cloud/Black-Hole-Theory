@@ -209,22 +209,22 @@ const EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")),
 //formula
 const P1 = new Formula(
         () => BigNumber.from(12.642) * M.value.pow(2) * (EVal.value + BigNumber.ONE).log10() / M._default,
-        () => Symbol.create("\\Phi_{\\text{acc}}"),
+        () => Symbol.create("\\Phi_{\\text{a}}"),
         () => "\\frac{12.642 \\cdot " + M.symbol.latex + "^{2} \\cdot log_{10}\\left(1 + " + EVal.symbol.latex + "\\right)}{" + numberFormat(M._default, 2) + "}"
     ),
     P2 = new Formula(
         () => BigNumber.from(6.321) * M.value,
-        () => Symbol.create("\\Phi_{\\text{eh}}"),
+        () => Symbol.create("\\Phi_{\\text{e}}"),
         () => "6.321 \\cdot " + M.symbol.latex
     ),
     P3 = new Formula(
         () => K.value / (BigNumber.ONE + M.value.pow(2)),
-        () => Symbol.create("\\Phi_{\\text{rad}}"),
+        () => Symbol.create("\\Phi_{\\text{r}}"),
         () => "\\frac{" + K.symbol.latex + "}{" + M.symbol.latex + "^2 + 1}"
     ),
     Pabs = new Formula(
         () => P1.calculate().min(P2.calculate()),
-        () => Symbol.create("\\Phi_{\\text{core}}"),
+        () => Symbol.create("\\Phi_{\\text{c}}"),
         () => "\\inf \\langle " + P1.symbol.latex + ", " + P2.symbol.latex + " \\rangle"
     ),
     dE = new Formula(
@@ -234,7 +234,7 @@ const P1 = new Formula(
             return -second.min(EVal.value);
         },
         () => Symbol.create("\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "}"),
-        () => "-\\inf \\langle " + P3.symbol.latex + ", " + mi.symbol.latex + " \\cdot " + Pabs.symbol.latex + " \\rangle"
+        () => "-\\inf \\langle " + P3.symbol.latex + c.symbol.latex + " ^{2}, " + Pabs.symbol.latex + mi.symbol.latex + " \\rangle"
     ),
     dM = new Formula(
         (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * P3.calculate(),
