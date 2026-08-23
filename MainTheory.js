@@ -14,7 +14,7 @@ var DMFormula = () => {
 
 //getValue
 var getE = (amount) => {
-    return amount * BigNumber.TEN.pow(24);
+    return amount * BigNumber.TEN.pow(25);
 }
 
 var getBaseLambda = () => {
@@ -216,7 +216,7 @@ const P1 = new Formula(
         () => "P_{\\text{abs}} = \\min\\left(P_1, P_2\\right)"
     ),
     dE = new Formula(
-        (time) => -EVal.value.min(mi.value * Pabs.calculate() * time),
+        (time) => -EVal.value.min((mi.value + BigNumber.TEN) * Pabs.calculate() * time),
         () => "\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} = -\\min\\left(" + EVal.symbol.latex + ", " + mi.symbol.latex + " \\cdot P_{\\text{abs}}\\right)"
     ),
     dM = new Formula(
@@ -282,7 +282,7 @@ var init = () => {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
             Symbol.create("µ", "\\mu"), 
-            (level) => (BigNumber.ONE + level * BigNumber.from(0.01))
+            (level) => (BigNumber.TEN + level * BigNumber.from(0.01))
         );
     }
 
