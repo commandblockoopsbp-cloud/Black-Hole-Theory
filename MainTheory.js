@@ -1,5 +1,6 @@
-import { ConstantCost, ExponentialCost, FirstFreeCost, FreeCost, LinearCost } from "./api/Costs";
-import { BigNumber } from "./api/BigNumber";
+import { ConstantCost, ExponentialCost, FreeCost, LinearCost } from "./api/Costs";
+import { parseBigNumber, BigNumber } from "./api/BigNumber";
+import { Localization } from "./api/Localization";
 import { theory } from "./api/Theory";
 import { Utils } from "./api/Utils";
 import { Thickness } from "./api/ui/properties/Thickness";
@@ -8,7 +9,7 @@ import { Color } from "./api/ui/properties/Color";
 
 //formula
 var DMFormula = () => {
-    return (t_r.value / BigNumber.from(90)).pow(3) * (BigNumber.ONE + darkIncre.value);
+    return (t_r.value / BigNumber.from(90)).pow(3) * darkIncre1.value * darkIncre2.value * darkIncre3.value;
 }
 
 
@@ -92,6 +93,8 @@ var collapseReset = () => {
     t_r.reset();
     mi.reset();
     gamma.reset();
+    darkIncre2.reset();
+    darkIncre3.reset();
     theory.clearGraph();
     theory.invalidatePrimaryEquation();
     theory.invalidateQuaternaryValues();
@@ -182,16 +185,18 @@ var description = "A basic theory.";
 var authors = "Tomster - Coder\nfien012 - Idea && Tester";
 var version = 1;
 
+//save_value
+var rhoSave = 0;
+
 //currency
 var currency, darkMatter;
 
 //upgrade
-var E1, startTheory, mi, gamma,
-    darkIncre, lambda;
+var E1, startTheory, mi, gamma, darkIncre2, darkIncre3,
+    darkIncre1, lambda, showRho;
 
 //permanent
-var testMode, testRefund;
-var tDifla;
+var tDifla, unlockPsiIn;
 
 //constant
 const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
@@ -305,26 +310,32 @@ var init = () => {
         gamma.upgrade.maxLevel = 16;
     }
 
+    // darkIncre2
+    {
+        darkIncre2 = new Upgrade(
+            theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.from(30000), BigNumber.from(1.15).log2())), 
+            Symbol.create(),
+            (level) => (BigNumber.ONE + BigNumber.from(0.05) * level),
+            (_) => Utils.getMath(`+5 \\% \\operatorname{to} ${darkMatter.symbol}`),
+            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre2.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre2._getValue(darkIncre2.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
+        );
+        darkIncre2.maxLevel = 20;
+    }
+
+    // darkIncre3
+    {
+        darkIncre3 = new Upgrade(
+            theory.createUpgrade(4, currency, new ConstantCost(BigNumber.from(40000))), 
+            Symbol.create(),
+            (level) => level * (BigNumber.ONE + BigNumber.from(0.1) * (Cn.value + BigNumber.ONE).log()),
+            (_) => `Enhances ${darkMatter.symbol} efficiency.`,
+            (_) => `Scales ${darkMatter.symbol} gain relative to Collapses.`
+        );
+        darkIncre3.maxLevel = 1;
+    }
+
     /////////////////////
     // Permanent Upgrades
-    {
-        testMode = new Upgrade(
-            theory.createPermanentUpgrade(0, currency, new FreeCost()), 
-            Symbol.create("TimeScale"), 
-            (level) => level + BigNumber.ONE
-        );
-        testMode.upgrade.maxLevel = 9;
-    }
-    {
-        testRefund = new Upgrade(
-            theory.createPermanentUpgrade(1, currency, new FreeCost()), 
-            Symbol.create("Refund"), 
-            (level) => BigNumber.ZERO
-        );
-        testRefund.upgrade.bought = (_) => {
-            if (testMode.upgrade.level > 0) testMode.upgrade.level -= 1;
-        }
-    }
 
     ///////////////////////
     //// Milestone Upgrades
@@ -334,24 +345,25 @@ var init = () => {
 
     //darkMatter
     darkMatter = theory.createCurrency("Ψ", "\\Psi");
+    let baseDarkID = 100;
     ///////////////////
     // Regular Upgrades
 
-    //darkIncre
+    //darkIncre1
     {
-        darkIncre = new Upgrade(
-            theory.createUpgrade(3, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
+        darkIncre1 = new Upgrade(
+            theory.createUpgrade(0 + baseDarkID, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
             Symbol.create(),
-            (level) => BigNumber.from(0.15) * level,
+            (level) => (BigNumber.ONE + BigNumber.from(0.15) * level),
             (_) => Utils.getMath(`+15 \\% \\operatorname{to} ${darkMatter.symbol}`),
-            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre._getValue(darkIncre.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
+            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre1.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre1._getValue(darkIncre1.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
     }
 
     //lambda
     {
         lambda = new Upgrade(
-            theory.createUpgrade(4, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
+            theory.createUpgrade(1 + baseDarkID, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
             Symbol.create("λ", "\\lambda"),
             (level) => (1 + level) * BigNumber.from(0.25)
         );
@@ -359,14 +371,39 @@ var init = () => {
 
     /////////////////////
     // Permanent Upgrades
-    let base = 100;
+
+    // show_rho_gain
     {
-        tDifla = new Upgrade(
-            theory.createPermanentUpgrade(0 + base, darkMatter, new ConstantCost(BigNumber.from(25))), 
+        showRho = new Upgrade(
+            theory.createPermanentUpgrade(0 + baseDarkID, darkMatter, new ConstantCost(BigNumber.from(5))), 
             Symbol.create(), 
             (_) => BigNumber.ZERO,
-            (_) => "Buy this unlock this",
-            (_) => "Open time diflation"
+            (_) => `Unlock ${currency.symbol} gain rate.`,
+            (_) => `Unlocks real-time tracking and calculation of your ${currency.symbol} accumulation rate.`
+        );
+        showRho.upgrade.maxLevel = 1;
+    }
+
+    // unlock_upgrade
+    {
+        unlockPsiIn = new Upgrade(
+            theory.createPermanentUpgrade(1 + baseDarkID, darkMatter, new ConstantCost(BigNumber.from(15))), 
+            Symbol.create(), 
+            (_) => BigNumber.ZERO,
+            (_) => "Unlock More Upgrade.",
+            (_) => `Unlocks new upgrades to boost ${darkMatter.symbol} gain.`
+        );
+        unlockPsiIn.upgrade.maxLevel = 2;
+    }
+
+    // time_diflation
+    {
+        tDifla = new Upgrade(
+            theory.createPermanentUpgrade(2 + baseDarkID, darkMatter, new ConstantCost(BigNumber.from(25))), 
+            Symbol.create(), 
+            (_) => BigNumber.ZERO,
+            (_) => "Unlock Time Diflation.",
+            (_) => `Unlock ${getEpsilon().symbol.latex} .`
         );
         tDifla.upgrade.maxLevel = 1;
     }
@@ -379,9 +416,13 @@ var init = () => {
 }
 
 var updateAvailability = () => {
-    darkIncre.upgrade.isAvailable = Cn.value > 0;
+    darkIncre1.upgrade.isAvailable = Cn.value > 0;
     lambda.upgrade.isAvailable = Cn.value > 0;
     tDifla.upgrade.isAvailable = Cn.value > 10;
+    unlockPsiIn.upgrade.isAvailable = Cn.value > 0;
+    showRho.upgrade.isAvailable = Cn.value > 0;
+    darkIncre2.upgrade.isAvailable = unlockPsiIn.level > 0;
+    darkIncre3.upgrade.isAvailable = unlockPsiIn.level > 1;
 }
 
 var isCurrencyVisible = (index) => {
@@ -397,7 +438,7 @@ var isCurrencyVisible = (index) => {
 
 var tick = (elapsedTime, multiplier) => {
     //calculate
-    let realTime = BigNumber.from(elapsedTime * multiplier) * testMode.value;
+    let realTime = BigNumber.from(elapsedTime * multiplier);
     if (M.value == 0) {
         realTime = 0;
     }
@@ -413,7 +454,8 @@ var tick = (elapsedTime, multiplier) => {
         t.value += time;
         t_r.value += realTime;
 
-        currency.value += rho.calculate(realTime);
+        rhoSave = rho.calculate(realTime);
+        currency.value += rhoSave;
     }
 
     //dynamicLabel
@@ -457,29 +499,19 @@ var getPrimaryEquation = () => {
 
 var getQuaternaryEntries = () => {
     let quaternaryEntries = [];
-    let flagAll = quaternaryEntries.length == 0;
-    let Epsi;
-    let add = 0;
-    if (flagAll) {
-        quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, null));
-        quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, null));
-        quaternaryEntries.push(new QuaternaryEntry("r_s", null));
-        if (tDifla.upgrade.level > 0) {
-            Epsi = getEpsilon();
-            quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, null));
-            add++;
-        }
-        quaternaryEntries.push(new QuaternaryEntry(t.symbol.latex, null));
-        quaternaryEntries.push(new QuaternaryEntry(t_r.symbol.latex, null));
+    if (showRho.upgrade.level > 0) {
+        quaternaryEntries.push(new QuaternaryEntry("\\dot{" + currency.symbol + "}", numberFormat(rhoSave, 2)));
     }
-    quaternaryEntries[0].value = numberFormat(EVal.value, 2);
-    quaternaryEntries[1].value = numberFormat(M.value, 2);
-    quaternaryEntries[2].value = numberFormat(getSchRadius(), 2);
+    quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, numberFormat(EVal.value, 2)));
+    quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, numberFormat(M.value, 2)));
+    quaternaryEntries.push(new QuaternaryEntry("r_s", numberFormat(getSchRadius(), 2)));
+
     if (tDifla.upgrade.level > 0) {
-        quaternaryEntries[3].value = numberFormat(Epsi.value, 2);
+        let Epsi = getEpsilon();
+        quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, numberFormat(Epsi.value, 2)));
     }
-    quaternaryEntries[3 + add].value = numberFormat(t.value, 2);
-    quaternaryEntries[4 + add].value = numberFormat(t_r.value, 2);
+    quaternaryEntries.push(new QuaternaryEntry(t.symbol.latex, numberFormat(t.value, 2)));
+    quaternaryEntries.push(new QuaternaryEntry(t_r.symbol.latex, numberFormat(t_r.value, 2)));
     return quaternaryEntries;
 }
 
@@ -487,7 +519,7 @@ var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
     result += "T_{evap} = " + numberFormat(tEvap / dt.calculate(), 2);
-    if (tDifla.upgrade.isAvailable) result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
+    if (tDifla.upgrade.level > 0) result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return result;
 }
 
@@ -495,7 +527,7 @@ var getSecondaryEquation = () => {
     let result = "";
     let Epsi = getEpsilon();
     result += theory.latexSymbol + "=\\max\\rho";
-    if (tDifla.upgrade.isAvailable) result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
+    if (tDifla.upgrade.level > 0) result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
     return result;
 }
 
@@ -601,7 +633,7 @@ var getEquationOverlay = () => {
                         content: ui.createStackLayout({
                             children: [
                                 ui.createLatexLabel({
-                                    text: Utils.getMath("\\begin{matrix} \\text{Reset your } " + currency.symbol + ", " + M.symbol.latex + ", " + EVal.symbol.latex + ", " + t.symbol.latex + ", " + t_r.symbol.latex + " \\\\ \\text{and } " + mi.symbol.latex + ", " + gamma.symbol.latex + " \\text{ upgrades} \\end{matrix} \\\\"),
+                                    text: Utils.getMath("\\begin{matrix} \\text{Reset your } " + currency.symbol + ", " + M.symbol.latex + ", " + EVal.symbol.latex + ", " + t.symbol.latex + ", " + t_r.symbol.latex + " \\\\ \\text{and all regular upgrades} \\end{matrix} \\\\"),
                                     horizontalTextAlignment: TextAlignment.CENTER,
                                     verticalTextAlignment: TextAlignment.CENTER
                                 }),
@@ -613,7 +645,7 @@ var getEquationOverlay = () => {
                                     onReleased: () => {
                                         if (isReady) {
                                             collapseReset();
-                                            popup.hide(); // Tự động đóng popup sau khi reset thành công
+                                            popup.hide();
                                         }
                                     }
                                 })
