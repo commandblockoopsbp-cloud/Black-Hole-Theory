@@ -10,7 +10,7 @@ import { Color } from "./api/ui/properties/Color";
 //formula
 var DMFormula = () => {
     let activeFactor = BigNumber.from(E1.upgrade.level + 1).pow(1.2);
-    let timeComponent = (t_r.value / BigNumber.from(90));
+    let timeComponent = (t_r.value / BigNumber.from(110));
     let baseDM = timeComponent.pow(2) * activeFactor;
     let multiplier = (BigNumber.ONE + darkIncre1.value) * (BigNumber.ONE + darkIncre2.value) * darkIncre3.value;
     return baseDM * multiplier;
