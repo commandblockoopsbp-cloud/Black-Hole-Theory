@@ -9,7 +9,7 @@ import { Color } from "./api/ui/properties/Color";
 
 //formula
 var DMFormula = () => {
-    return (t_r.value / BigNumber.from(90)).pow(3) * darkIncre1.value * darkIncre2.value * darkIncre3.value;
+    return (t_r.value / BigNumber.from(90)).pow(3) * (BigNumber.ONE + darkIncre1.value) * (BigNumber.ONE + darkIncre2.value) * darkIncre3.value;
 }
 
 
@@ -186,17 +186,17 @@ var authors = "Tomster - Coder\nfien012 - Idea && Tester";
 var version = 1;
 
 //save_value
-var rhoSave = 0;
+var rhoSave = BigNumber.ZERO, minFormula = "None";
 
 //currency
 var currency, darkMatter;
 
 //upgrade
 var E1, startTheory, mi, gamma, darkIncre2, darkIncre3,
-    darkIncre1, lambda, showRho;
+    darkIncre1, lambda;
 
 //permanent
-var tDifla, unlockPsiIn;
+var tDifla, unlockPsiIn, showRho;
 
 //constant
 const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.create("G", "\\mathbb{G}")), 
@@ -234,9 +234,18 @@ const P1 = new Formula(
     ),
     dE = new Formula(
         (time) => {
-            let first = P3.calculate() * c.value.pow(2);
-            let second = time * first.min(mi.value * Pabs.calculate());
-            return -second.min(EVal.value);
+            let val = [new Constant(EVal.value, EVal.symbol), 
+                        new Constant(P3.calculate() * c.value.pow(2) * time, P3.symbol), 
+                        new Constant(Pabs.calculate() * mi.value * time, Pabs.symbol)];
+            let minVal = val[0].value;
+            minFormula = val[0].symbol.latex;
+            for (let i = 1; i < 3; i++) {
+                if (val[i].value < minVal) {
+                    minVal = val[i].value;
+                    minFormula = val[i].symbol.latex;
+                }
+            }
+            return -minVal;
         },
         () => Symbol.create("\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "}"),
         () => "-\\inf \\langle " + P3.symbol.latex + c.symbol.latex + " ^{2}, " + Pabs.symbol.latex + mi.symbol.latex + " \\rangle"
@@ -315,7 +324,7 @@ var init = () => {
         darkIncre2 = new Upgrade(
             theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.from(30000), BigNumber.from(1.15).log2())), 
             Symbol.create(),
-            (level) => (BigNumber.ONE + BigNumber.from(0.05) * level),
+            (level) => (BigNumber.from(0.05) * level),
             (_) => Utils.getMath(`+5 \\% \\operatorname{to} ${darkMatter.symbol}`),
             (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre2.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre2._getValue(darkIncre2.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
@@ -328,7 +337,7 @@ var init = () => {
             theory.createUpgrade(4, currency, new ConstantCost(BigNumber.from(40000))), 
             Symbol.create(),
             (level) => (BigNumber.ONE + level * BigNumber.from(0.1) * (Cn.value + BigNumber.ONE).log()),
-            (_) => `Enhances ${darkMatter.symbol} efficiency.`,
+            (_) => `Enhances ${darkMatter.symbol} formula efficiency.`,
             (_) => `Scales ${darkMatter.symbol} gain relative to Collapses.`
         );
         darkIncre3.maxLevel = 1;
@@ -354,7 +363,7 @@ var init = () => {
         darkIncre1 = new Upgrade(
             theory.createUpgrade(0 + baseDarkID, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
             Symbol.create(),
-            (level) => (BigNumber.ONE + BigNumber.from(0.15) * level),
+            (level) => (BigNumber.from(0.15) * level),
             (_) => Utils.getMath(`+15 \\% \\operatorname{to} ${darkMatter.symbol}`),
             (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre1.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre1._getValue(darkIncre1.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
@@ -378,10 +387,16 @@ var init = () => {
             theory.createPermanentUpgrade(0 + baseDarkID, darkMatter, new ConstantCost(BigNumber.from(5))), 
             Symbol.create(), 
             (_) => BigNumber.ZERO,
-            (_) => `Unlock ${currency.symbol} gain rate.`,
-            (_) => `Unlocks real-time tracking and calculation of your ${currency.symbol} accumulation rate.`
+            (_) => {
+                if (showRho.upgrade.level < 1) return `Show ${Utils.getMath(currency.symbol)} gain rate.`;
+                else return `Show minimum ${Utils.getMath(dE.symbol.latex)} formula`;
+            },
+            (_) => {
+                if (showRho.upgrade.level < 1) return `Unlocks real-time tracking and calculation of your ${Utils.getMath(currency.symbol)} accumulation rate.`;
+                else return `Unlocks the analytical formula for the minimum ${Utils.getMath(dE.symbol.latex)} boundary.`;
+            }
         );
-        showRho.upgrade.maxLevel = 1;
+        showRho.upgrade.maxLevel = 2;
     }
 
     // unlock_upgrade
@@ -391,7 +406,7 @@ var init = () => {
             Symbol.create(), 
             (_) => BigNumber.ZERO,
             (_) => "Unlock More Upgrade.",
-            (_) => `Unlocks new upgrades to boost ${darkMatter.symbol} gain.`
+            (_) => `Unlocks new upgrades to boost ${Utils.getMath(darkMatter.symbol)} gain.`
         );
         unlockPsiIn.upgrade.maxLevel = 2;
     }
@@ -403,7 +418,7 @@ var init = () => {
             Symbol.create(), 
             (_) => BigNumber.ZERO,
             (_) => "Unlock Time Diflation.",
-            (_) => `Unlock ${getEpsilon().symbol.latex} .`
+            (_) => `Unlock ${Utils.getMath(getEpsilon().symbol.latex)} .`
         );
         tDifla.upgrade.maxLevel = 1;
     }
@@ -421,8 +436,8 @@ var updateAvailability = () => {
     tDifla.upgrade.isAvailable = Cn.value > 10;
     unlockPsiIn.upgrade.isAvailable = Cn.value > 0;
     showRho.upgrade.isAvailable = Cn.value > 0;
-    darkIncre2.upgrade.isAvailable = unlockPsiIn.level > 0;
-    darkIncre3.upgrade.isAvailable = unlockPsiIn.level > 1;
+    darkIncre2.upgrade.isAvailable = unlockPsiIn.upgrade.level > 0;
+    darkIncre3.upgrade.isAvailable = unlockPsiIn.upgrade.level > 1;
 }
 
 var isCurrencyVisible = (index) => {
@@ -465,6 +480,8 @@ var tick = (elapsedTime, multiplier) => {
 
     theory.invalidateQuaternaryValues();
     theory.invalidateTertiaryEquation();
+    theory.invalidatePrimaryEquation();
+    theory.invalidateSecondaryEquation();
     updateAvailability();
 }
 
@@ -482,35 +499,35 @@ var setInternalState = (state) => {
 
 var getPrimaryEquation = () => {
     let result = "";
-    let scale = 1.1;
+    let scale = 1;
     let Epsi = getEpsilon();
     result += enter(rho.latex());
-
-    result += enter(dt.latex());
 
     result += enter(dE.latex());
 
     result += dM.latex();
 
     theory.primaryEquationScale = scale;
-    theory.primaryEquationHeight = 150 * scale;
+    theory.primaryEquationHeight = 110 * scale;
     return "\\begin{matrix}" + result + "\\end{matrix}";
 }
 
 var getQuaternaryEntries = () => {
     let quaternaryEntries = [];
+
     if (showRho.upgrade.level > 0) {
         quaternaryEntries.push(new QuaternaryEntry("\\dot{" + currency.symbol + "}", numberFormat(rhoSave, 2)));
     }
+
     quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, numberFormat(EVal.value, 2)));
     quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, numberFormat(M.value, 2)));
-    quaternaryEntries.push(new QuaternaryEntry("r_s", numberFormat(getSchRadius(), 2)));
 
     if (tDifla.upgrade.level > 0) {
         let Epsi = getEpsilon();
+        quaternaryEntries.push(new QuaternaryEntry("r_s", numberFormat(getSchRadius(), 2)));
         quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, numberFormat(Epsi.value, 2)));
     }
-    quaternaryEntries.push(new QuaternaryEntry(t.symbol.latex, numberFormat(t.value, 2)));
+
     quaternaryEntries.push(new QuaternaryEntry(t_r.symbol.latex, numberFormat(t_r.value, 2)));
     return quaternaryEntries;
 }
@@ -518,16 +535,20 @@ var getQuaternaryEntries = () => {
 var getTertiaryEquation = () => {
     let result = "";
     let tEvap = M.value.pow(BigNumber.THREE) / (BigNumber.THREE * K.value);
+    if (showRho.upgrade.level > 1) {
+        result += enter(dE.symbol.latex + "\\text{ is }" + minFormula);
+    }
     result += "T_{evap} = " + numberFormat(tEvap / dt.calculate(), 2);
     if (tDifla.upgrade.level > 0) result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
-    return result;
+    return "\\begin{matrix} " + result + " \\end{matrix}";
 }
 
 var getSecondaryEquation = () => {
     let result = "";
     let Epsi = getEpsilon();
     result += theory.latexSymbol + "=\\max\\rho";
-    if (tDifla.upgrade.level > 0) result += ",\\text{ }" + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
+    result += " ,\\text{ } " + dt.latex();
+    if (tDifla.upgrade.level > 0) result += " ,\\text{ } " + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
     return result;
 }
 
