@@ -327,7 +327,7 @@ var init = () => {
         darkIncre3 = new Upgrade(
             theory.createUpgrade(4, currency, new ConstantCost(BigNumber.from(40000))), 
             Symbol.create(),
-            (level) => level * (BigNumber.ONE + BigNumber.from(0.1) * (Cn.value + BigNumber.ONE).log()),
+            (level) => (BigNumber.ONE + level * BigNumber.from(0.1) * (Cn.value + BigNumber.ONE).log()),
             (_) => `Enhances ${darkMatter.symbol} efficiency.`,
             (_) => `Scales ${darkMatter.symbol} gain relative to Collapses.`
         );
