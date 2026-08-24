@@ -9,7 +9,11 @@ import { Color } from "./api/ui/properties/Color";
 
 //formula
 var DMFormula = () => {
-    return (t_r.value / BigNumber.from(90)).pow(3) * (BigNumber.ONE + darkIncre1.value) * (BigNumber.ONE + darkIncre2.value) * darkIncre3.value;
+    let activeFactor = BigNumber.from(E1.upgrade.level + 1).pow(1.2);
+    let timeComponent = (t_r.value / BigNumber.from(90));
+    let baseDM = timeComponent.pow(2) * activeFactor;
+    let multiplier = (BigNumber.ONE + darkIncre1.value) * (BigNumber.ONE + darkIncre2.value) * darkIncre3.value;
+    return baseDM * multiplier;
 }
 
 
@@ -18,16 +22,16 @@ var getE = (amount) => {
     return amount * BigNumber.TEN.pow(25);
 }
 
-var getSchRadius = () => {
-    return BigNumber.TWO * G.value * M.value / c.value.pow(2);
+var getSchRadius = (M) => {
+    return BigNumber.TWO * G.value * M / c.value.pow(2);
 }
 
 var getRadiusDiff = () => {
     return BigNumber.from(1.49) * BigNumber.TEN.pow(-43);
 }
 
-var getEpsilon = () => {
-    return new Constant(getSchRadius() / getRadiusDiff(), Symbol.create("ε", "\\epsilon"));
+var getEpsilon = (M) => {
+    return new Constant(getSchRadius(M) / getRadiusDiff(), Symbol.create("ε", "\\epsilon"));
 }
 
 
@@ -87,6 +91,7 @@ var collapseReset = () => {
     darkMatter.value += DMFormula();
     currency.value = BigNumber.ZERO;
     startTheory.level = 0;
+    E1.reset();
     M.reset();
     EVal.reset();
     t.reset();
@@ -186,7 +191,7 @@ var authors = "Tomster - Coder\nfien012 - Idea && Tester";
 var version = 1;
 
 //save_value
-var rhoSave = BigNumber.ZERO, minFormula = "None";
+var minFormula = "None", lastBuyTime = 0;
 
 //currency
 var currency, darkMatter;
@@ -208,7 +213,7 @@ const G = new Constant(BigNumber.from(6.674) * BigNumber.TEN.pow(-11), Symbol.cr
 const EVal = new Stat(BigNumber.ZERO, Symbol.create("E", "\\mathbb{E}")), 
     t_r = new Stat(BigNumber.ZERO, Symbol.create("t", "t_r")), 
     t = new Stat(BigNumber.ZERO, Symbol.create("t", "t")), 
-    M = new Stat(BigNumber.PI * BigNumber.TEN.pow(10), Symbol.create("M", "\\mathcal{M}")), 
+    M = new Stat(BigNumber.E * BigNumber.TEN.pow(10), Symbol.create("M", "\\mathcal{M}")), 
     Cn = new Stat(BigNumber.ZERO, Symbol.create("C_n", "C_n"));
 
 //formula
@@ -235,7 +240,7 @@ const P1 = new Formula(
     dE = new Formula(
         (time) => {
             let val = [new Constant(EVal.value, EVal.symbol), 
-                        new Constant(P3.calculate() * c.value.pow(2) * time, P3.symbol), 
+                        new Constant(P3.calculate() / (BigNumber.ONE - gamma.value) * c.value.pow(2) * time, P3.symbol), 
                         new Constant(Pabs.calculate() * mi.value * time, Pabs.symbol)];
             let minVal = val[0].value;
             minFormula = val[0].symbol.latex;
@@ -248,7 +253,7 @@ const P1 = new Formula(
             return -minVal;
         },
         () => Symbol.create("\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "}"),
-        () => "-\\inf \\langle " + P3.symbol.latex + c.symbol.latex + " ^{2}, " + Pabs.symbol.latex + mi.symbol.latex + " \\rangle"
+        () => "-\\inf \\langle \\frac{" + P3.symbol.latex + c.symbol.latex + " ^{2}}{1 - " + gamma.symbol.latex + "}, " + Pabs.symbol.latex + mi.symbol.latex + " \\rangle"
     ),
     dM = new Formula(
         (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * P3.calculate(),
@@ -257,12 +262,13 @@ const P1 = new Formula(
     ),
     dt = new Formula(
         () => {
-            if (tDifla.upgrade.level > 0) return (BigNumber.ONE + getEpsilon().value).sqrt();
-            return M._default * BigNumber.TEN.pow(3);
+            let val = M._default;
+            if (tDifla.upgrade.level > 0) val = M.value;
+            return (BigNumber.ONE + getEpsilon(val).value).sqrt();
         },
         () => Symbol.create("d" + t.symbol.latex),
         () => {
-            if (tDifla.upgrade.level > 0) return "\\sqrt{1 + " + getEpsilon().symbol.latex + "}";
+            if (tDifla.upgrade.level > 0) return "\\sqrt{1 + " + getEpsilon(M.value).symbol.latex + "}";
             return dt.calculate();
         }
     ),
@@ -292,12 +298,23 @@ var init = () => {
 
     // E1
     {
-        E1 = theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN));
-        E1.bought = (amount) => {
-            EVal.value += amount * getE(1);
+        E1 = new Upgrade(
+            theory.createSingularUpgrade(0, currency, new ConstantCost(BigNumber.TEN)), 
+            Symbol.create(),
+            (level) => (BigNumber.from(0.05) * level),
+            (_) => Utils.getMath(EVal.symbol.latex + " \\uparrow " + getE(1)),
+            (_) => Utils.getMath(EVal.symbol.latex + "\\text{ increase by }" + getE(1))
+        );
+        E1.upgrade.canBeRefunded = (_) => true;
+        E1.upgrade.bought = (amount) => {
+            let currentTime = t_r.value.toNumber();
+            if (Math.abs(currentTime - lastBuyTime) >= 0.1) {
+                EVal.value += amount * getE(1);
+                lastBuyTime = currentTime;
+            } else {
+                E1.upgrade.refund(amount);
+            }
         };
-        E1.getDescription = (_) => Utils.getMath(EVal.symbol.latex + " \\uparrow " + getE(1));
-        E1.getInfo = (_) => Utils.getMath(EVal.symbol.latex + "\\text{ increase by }" + getE(1));
     }
 
     // mi
@@ -305,7 +322,7 @@ var init = () => {
         mi = new Upgrade(
             theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.FIVE, BigNumber.from(1.18).log2())), 
             Symbol.create("µ", "\\mu"), 
-            (level) => (BigNumber.FIVE + level * BigNumber.from(0.01))
+            (level) => (BigNumber.FIVE + level * BigNumber.from(0.05))
         );
     }
 
@@ -314,7 +331,7 @@ var init = () => {
         gamma = new Upgrade(
             theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN.pow(2), BigNumber.TEN.pow(1).log2())), 
             Symbol.create("γ", "\\gamma"), 
-            (level) => (BigNumber.from(0.9) - level * BigNumber.from(0.025)).max(BigNumber.from(0.1))
+            (level) => (BigNumber.from(0.9) - level * BigNumber.from(0.05)).max(BigNumber.from(0.1))
         );
         gamma.upgrade.maxLevel = 16;
     }
@@ -328,7 +345,7 @@ var init = () => {
             (_) => Utils.getMath(`+5 \\% \\operatorname{to} ${darkMatter.symbol}`),
             (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre2.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre2._getValue(darkIncre2.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
-        darkIncre2.maxLevel = 20;
+        darkIncre2.upgrade.maxLevel = 20;
     }
 
     // darkIncre3
@@ -340,7 +357,7 @@ var init = () => {
             (_) => `Enhances ${darkMatter.symbol} formula efficiency.`,
             (_) => `Scales ${darkMatter.symbol} gain relative to Collapses.`
         );
-        darkIncre3.maxLevel = 1;
+        darkIncre3.upgrade.maxLevel = 1;
     }
 
     /////////////////////
@@ -418,7 +435,7 @@ var init = () => {
             Symbol.create(), 
             (_) => BigNumber.ZERO,
             (_) => "Unlock Time Diflation.",
-            (_) => `Unlock ${Utils.getMath(getEpsilon().symbol.latex)} .`
+            (_) => `Unlock ${Utils.getMath(getEpsilon(0).symbol.latex)} .`
         );
         tDifla.upgrade.maxLevel = 1;
     }
@@ -469,8 +486,7 @@ var tick = (elapsedTime, multiplier) => {
         t.value += time;
         t_r.value += realTime;
 
-        rhoSave = rho.calculate(realTime);
-        currency.value += rhoSave;
+        currency.value += rho.calculate(realTime);
     }
 
     //dynamicLabel
@@ -500,7 +516,6 @@ var setInternalState = (state) => {
 var getPrimaryEquation = () => {
     let result = "";
     let scale = 1;
-    let Epsi = getEpsilon();
     result += enter(rho.latex());
 
     result += enter(dE.latex());
@@ -516,15 +531,15 @@ var getQuaternaryEntries = () => {
     let quaternaryEntries = [];
 
     if (showRho.upgrade.level > 0) {
-        quaternaryEntries.push(new QuaternaryEntry("\\dot{" + currency.symbol + "}", numberFormat(rhoSave, 2)));
+        quaternaryEntries.push(new QuaternaryEntry("\\dot{" + currency.symbol + "}", numberFormat(rho.calculate(1), 2)));
     }
 
     quaternaryEntries.push(new QuaternaryEntry(EVal.symbol.latex, numberFormat(EVal.value, 2)));
     quaternaryEntries.push(new QuaternaryEntry(M.symbol.latex, numberFormat(M.value, 2)));
 
     if (tDifla.upgrade.level > 0) {
-        let Epsi = getEpsilon();
-        quaternaryEntries.push(new QuaternaryEntry("r_s", numberFormat(getSchRadius(), 2)));
+        let Epsi = getEpsilon(M.value);
+        quaternaryEntries.push(new QuaternaryEntry("r_s", numberFormat(getSchRadius(M.value), 2)));
         quaternaryEntries.push(new QuaternaryEntry(Epsi.symbol.latex, numberFormat(Epsi.value, 2)));
     }
 
@@ -545,7 +560,7 @@ var getTertiaryEquation = () => {
 
 var getSecondaryEquation = () => {
     let result = "";
-    let Epsi = getEpsilon();
+    let Epsi = getEpsilon(M.value);
     result += theory.latexSymbol + "=\\max\\rho";
     result += " ,\\text{ } " + dt.latex();
     if (tDifla.upgrade.level > 0) result += " ,\\text{ } " + Epsi.symbol.latex + " = \\frac{r_s}{r - r_s}";
