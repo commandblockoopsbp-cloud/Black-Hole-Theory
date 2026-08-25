@@ -338,7 +338,7 @@ var init = () => {
     // darkIncre2
     {
         darkIncre2 = new Upgrade(
-            theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.from(30000), BigNumber.from(1.15).log2())), 
+            theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.from(20000), BigNumber.from(1.15).log2())), 
             Symbol.create(),
             (level) => (BigNumber.from(0.05) * level),
             (_) => Utils.getMath(`+5 \\% \\operatorname{to} ${darkMatter.symbol}`),
