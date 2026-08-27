@@ -427,13 +427,13 @@ var init = () => {
         unlockPsiIn.upgrade.maxLevel = 2;
     }
 
-    // time_diflation
+    // time_dilation
     {
         tDifla = new Upgrade(
             theory.createPermanentUpgrade(2 + baseDarkID, darkMatter, new ConstantCost(BigNumber.from(25))), 
             Symbol.create(), 
             (_) => BigNumber.ZERO,
-            (_) => "Unlock Time Diflation.",
+            (_) => "Unlock Time Dilation.",
             (_) => `Unlock ${Utils.getMath(getEpsilon(0).symbol.latex)} .`
         );
         tDifla.upgrade.maxLevel = 1;
