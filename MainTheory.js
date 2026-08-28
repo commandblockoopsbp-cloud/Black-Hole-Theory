@@ -25,7 +25,7 @@ var getE = (amount) => {
 var getTevap = (M) => {
     let MVal = BigNumber.from(M);
     let MComponent = (MVal.pow(3) / BigNumber.THREE) + MVal;
-    return MComponent / K.value;
+    return MComponent / (K.value * dt.calculate());
 }
 
 var getSchRadius = (M) => {
@@ -549,7 +549,7 @@ var getTertiaryEquation = () => {
     if (showRho.upgrade.level > 1) {
         result += enter(dE.symbol.latex + "\\text{ is }" + minFormula);
     }
-    result += "T_{evap} = " + numberFormat(getTevap(M.value) / dt.calculate(), 2);
+    result += "T_{evap} = " + numberFormat(getTevap(M.value), 2);
     if (tDifla.upgrade.level > 0) result += ",\\text{ }r - r_s = " + numberFormat(getRadiusDiff(), 2);
     return "\\begin{matrix} " + result + " \\end{matrix}";
 }
