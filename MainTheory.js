@@ -10,8 +10,8 @@ import { Color } from "./api/ui/properties/Color";
 //formula
 var DMFormula = () => {
     let timeComponent = BigNumber.from(1.2).pow(t_r.value - getTevap(M._default));
-    let activeFactor = E1.level / (E1.level + 25);
-    let baseDM = activeFactor * timeComponent;
+    let activeFactor = BigNumber.from(E1.upgrade.level / (E1.upgrade.level + 25));
+    let baseDM = timeComponent * activeFactor;
     let multiplier = (BigNumber.ONE + darkIncre1.value) * (BigNumber.ONE + darkIncre2.value) * darkIncre3.value;
     return baseDM * multiplier;
 }
@@ -23,7 +23,9 @@ var getE = (amount) => {
 }
 
 var getTevap = (M) => {
-    return M.pow(BigNumber.THREE) / (BigNumber.THREE * K.value)
+    let MVal = BigNumber.from(M);
+    let MComponent = (MVal.pow(3) / BigNumber.THREE) + MVal;
+    return MComponent / K.value;
 }
 
 var getSchRadius = (M) => {
@@ -246,13 +248,13 @@ const P1 = new Formula(
             }
             return -minVal;
         },
-        () => Symbol.create("\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "}"),
+        () => Symbol.create("\\frac{\\Delta " + EVal.symbol.latex + "}{\\Delta " + t.symbol.latex + "}"),
         () => "-\\inf \\langle " + P2.symbol.latex + c.symbol.latex + " ^{2}, " + P1.symbol.latex + mi.symbol.latex + " \\rangle"
     ),
     dM = new Formula(
         (time) => (BigNumber.ONE - gamma.value) * -dE.calculate(time) / c.value.pow(2) - time * P2.calculate(),
-        () => Symbol.create("\\frac{d" + M.symbol.latex + "}{d" + t.symbol.latex + "}"),
-        () => "-\\frac{d" + EVal.symbol.latex + "}{d" + t.symbol.latex + "} \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - " + P2.symbol.latex
+        () => Symbol.create("\\frac{\\Delta " + M.symbol.latex + "}{\\Delta " + t.symbol.latex + "}"),
+        () => "- " + dE.symbol.latex + " \\cdot \\frac{1 - " + gamma.symbol.latex + "}{" + c.symbol.latex + "^2} - " + P2.symbol.latex
     ),
     dt = new Formula(
         () => {
@@ -260,7 +262,7 @@ const P1 = new Formula(
             if (tDifla.upgrade.level > 0) val = M.value;
             return (BigNumber.ONE + getEpsilon(val).value).sqrt();
         },
-        () => Symbol.create("d" + t.symbol.latex),
+        () => Symbol.create("\\Delta " + t.symbol.latex),
         () => {
             if (tDifla.upgrade.level > 0) return "\\sqrt{1 + " + getEpsilon(M.value).symbol.latex + "}";
             return dt.calculate();
@@ -486,7 +488,7 @@ var tick = (elapsedTime, multiplier) => {
 
     //dynamicLabel
     if (dynamicLabel1) {
-        dynamicLabel1.text = Utils.getMath("\\begin{matrix} \\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > 1, "s") + " } \\left(" + Cn.symbol.latex + " = " + Cn.value + "\\right) \\\\\\\\ \\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol + " \\end{matrix} \\\\");
+        dynamicLabel1.text = Utils.getMath("\\begin{matrix} \\text{You now have } " + Cn.value + " \\text{ " + addEndIf("Collapse", Cn.value > BigNumber.ONE, "s") + " } \\left(" + Cn.symbol.latex + " = " + Cn.value + "\\right) \\\\\\\\ \\text{You will earn }" + numberFormat(DMFormula(), 3) + darkMatter.symbol + " \\end{matrix} \\\\");
     }
 
     theory.invalidateQuaternaryValues();
