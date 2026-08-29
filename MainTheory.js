@@ -341,19 +341,19 @@ var init = () => {
     // darkIncre2
     {
         darkIncre2 = new Upgrade(
-            theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.from(30000), BigNumber.from(1.15).log2())), 
+            theory.createUpgrade(3, currency, new ExponentialCost(BigNumber.from(20000), BigNumber.from(1.19).log2())), 
             Symbol.create(),
             (level) => (BigNumber.from(0.05) * level),
             (_) => Utils.getMath(`+5 \\% \\operatorname{to} ${darkMatter.symbol}`),
             (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre2.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre2._getValue(darkIncre2.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
-        darkIncre2.upgrade.maxLevel = 20;
+        darkIncre2.upgrade.maxLevel = 100;
     }
 
     // darkIncre3
     {
         darkIncre3 = new Upgrade(
-            theory.createUpgrade(4, currency, new ConstantCost(BigNumber.from(40000))), 
+            theory.createUpgrade(4, currency, new ConstantCost(BigNumber.from(80000))), 
             Symbol.create(),
             (level) => (BigNumber.ONE + level * BigNumber.from(0.1) * (Cn.value + BigNumber.ONE).log()),
             (_) => `Enhances ${darkMatter.symbol} formula efficiency.`,
@@ -383,8 +383,8 @@ var init = () => {
             theory.createUpgrade(0 + baseDarkID, darkMatter, new LinearCost(BigNumber.from(0.2), BigNumber.from(0.2))), 
             Symbol.create(),
             (level) => (BigNumber.from(0.05) * level),
-            (_) => Utils.getMath(`+${darkIncre1._getValue(1) * 100} \\% \\operatorname{to} ${darkMatter.symbol}`),
-            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre1.value * 100  + "\\%$ to $" + darkIncre1._getValue(darkIncre1.upgrade.level + 1) * 100 + "\\%$."
+            (_) => Utils.getMath(`+${darkIncre1._getValue(1) * BigNumber.HUNDRED} \\% \\operatorname{to} ${darkMatter.symbol}`),
+            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre1.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre1._getValue(darkIncre1.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
         );
     }
 
