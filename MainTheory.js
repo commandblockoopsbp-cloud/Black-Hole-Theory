@@ -10,7 +10,7 @@ import { Color } from "./api/ui/properties/Color";
 //formula
 var DMFormula = () => {
     let timeComponent = BigNumber.from(1.2).pow(t_r.value - getTevap(M._default));
-    let activeFactor = BigNumber.from(E1.upgrade.level / (E1.upgrade.level + 25));
+    let activeFactor = BigNumber.from((E1.upgrade.level + 1) / (E1.upgrade.level + 25));
     let baseDM = timeComponent * activeFactor;
     let multiplier = (BigNumber.ONE + darkIncre1.value) * (BigNumber.ONE + darkIncre2.value) * darkIncre3.value;
     return baseDM * multiplier;
@@ -269,9 +269,14 @@ const P1 = new Formula(
         }
     ),
     rho = new Formula(
-        (realTime) => realTime * (BigNumber.ONE + lambda.value * Cn.value) * (BigNumber.ONE + M.value).log(),
+        (realTime) => realTime * lambda.value * (BigNumber.ONE + M.value).log(),
         () => Symbol.create("\\dot{" + currency.symbol + "}"),
-        () => "\\left(1 + " + lambda.symbol.latex + " \\cdot " + Cn.symbol.latex + " \\right) \\cdot \\ln \\left(1+" + M.symbol.latex + "\\right)"
+        () => {
+            let result = "";
+            if (lambda.upgrade.isAvailable) result += lambda.symbol.latex + " \\cdot ";
+            result += "\\ln \\left(1+" + M.symbol.latex + "\\right)";
+            return result;
+        }
     );
 
 
@@ -375,20 +380,20 @@ var init = () => {
     //darkIncre1
     {
         darkIncre1 = new Upgrade(
-            theory.createUpgrade(0 + baseDarkID, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
+            theory.createUpgrade(0 + baseDarkID, darkMatter, new LinearCost(BigNumber.from(0.2), BigNumber.from(0.2))), 
             Symbol.create(),
-            (level) => (BigNumber.from(0.15) * level),
-            (_) => Utils.getMath(`+15 \\% \\operatorname{to} ${darkMatter.symbol}`),
-            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre1.value * BigNumber.HUNDRED  + "\\%$ to $" + darkIncre1._getValue(darkIncre1.upgrade.level + 1) * BigNumber.HUNDRED + "\\%$."
+            (level) => (BigNumber.from(0.05) * level),
+            (_) => Utils.getMath(`+${darkIncre1._getValue(1) * 100} \\% \\operatorname{to} ${darkMatter.symbol}`),
+            (_) => "The $" + darkMatter.symbol + "$ formula increased by $" + darkIncre1.value * 100  + "\\%$ to $" + darkIncre1._getValue(darkIncre1.upgrade.level + 1) * 100 + "\\%$."
         );
     }
 
     //lambda
     {
         lambda = new Upgrade(
-            theory.createUpgrade(1 + baseDarkID, darkMatter, new LinearCost(BigNumber.TWO, BigNumber.TWO)), 
+            theory.createUpgrade(1 + baseDarkID, darkMatter, new LinearCost(BigNumber.ONE, BigNumber.ONE)), 
             Symbol.create("λ", "\\lambda"),
-            (level) => (1 + level) * BigNumber.from(0.25)
+            (level) => BigNumber.from(3).pow(level)
         );
     }
 
