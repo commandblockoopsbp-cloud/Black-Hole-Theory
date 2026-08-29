@@ -321,21 +321,21 @@ var init = () => {
     // mi
     {
         mi = new Upgrade(
-            theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.ONE, BigNumber.FIVE.log2())), 
+            theory.createUpgrade(1, currency, new ExponentialCost(BigNumber.ONE, BigNumber.from(1.5).log2())), 
             Symbol.create("µ", "\\mu"), 
-            (level) => BigNumber.from(0.1) * (level + 1)
+            (level) => BigNumber.from(0.025) * (level + 1)
         );
-        mi.upgrade.maxLevel = 28;
+        mi.upgrade.maxLevel = 112;
     }
 
     // gamma
     {
         gamma = new Upgrade(
-            theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN, BigNumber.from(15).log2())), 
+            theory.createUpgrade(2, currency, new ExponentialCost(BigNumber.TEN, BigNumber.from(2.75).log2())), 
             Symbol.create("γ", "\\gamma"), 
-            (level) => BigNumber.ONE - (2 + level) * BigNumber.from(0.05)
+            (level) => BigNumber.ONE - (2 + level) * BigNumber.from(0.02)
         );
-        gamma.upgrade.maxLevel = 16;
+        gamma.upgrade.maxLevel = 43;
     }
 
     // darkIncre2
