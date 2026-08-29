@@ -395,6 +395,7 @@ var init = () => {
             Symbol.create("λ", "\\lambda"),
             (level) => BigNumber.from(3).pow(level)
         );
+        lambda.upgrade.maxLevel = 15;
     }
 
     /////////////////////
